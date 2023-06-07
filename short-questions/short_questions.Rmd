@@ -30,6 +30,8 @@ cereal <- read_csv('./data/short-questions/cereal_dillons.csv')
 
 ```{r recode data}
 col_trans_list <- c('fat_g', 'sugar_g', 'sodium_mg')
+
+
 for(col in col_trans_list) {
   col_per <- cereal[col]/cereal['size_g']
   cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per))/max(col_per)
@@ -63,16 +65,32 @@ MASS::parcoord(cereal[c("Shelf", "fat_g_norm", "sodium_mg_norm", "sugar_g_norm")
 > Fill in: What do you think about ordinal data?' 
 
 ```{r multinomial logit regressions}
-model_cereal_shelves_linear    <- 'fill this in'
-model_cereal_shelves_quadratic <- 'fill this in'
+library(nnet)
+model_cereal_shelves_linear <- multinom(formula = Shelf ~ fat_g_norm +
+                                                          sugar_g_norm +
+                                                          sodium_mg_norm,
+                                                          data = cereal)
+
+
+model_cereal_shelves_quadratic  <- multinom(formula = Shelf ~ fat_g_norm +
+                                                          sugar_g_norm +
+                                                          sodium_mg_norm +
+                                                          fat_g_norm:sugar_g_norm +
+                                                          fat_g_norm:sodium_mg_norm +
+                                                          sodium_mg:sugar_g_norm +
+                                                          sodium_mg:sugar_g_norm:fat_g_norm,
+                                                          data = cereal)
 ```
 
 ```{r likelihood ratio tests: main effects}
-lrt_cereal_main_effects <- 'fill this in'
+library(car)
+lrt_cereal_main_effects <- car::Anova(model_cereal_shelves_linear)
+lrt_cereal_main_effects
 ```
 
 ```{r likelihood ratio tests: interaction effects} 
-lrt_cereal_quadratic_effects <- 'fill this in'
+lrt_cereal_quadratic_effects <- car::Anova(model_cereal_shelves_quadratic)
+lrt_cereal_quadratic_effects
 ```
 
 > 'Fill in: Write about what you learn as a result of these tests, using inline code evaluation.'
@@ -81,7 +99,25 @@ lrt_cereal_quadratic_effects <- 'fill this in'
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
 
 ```{r predictions for apple jacks}
-aj_shelf_probs <- 'fill this in'
+# Estimate new model that removes non-significant fat variable
+model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar_g_norm + sodium_mg_norm, data = cereal)
+
+# Create a datframe with Apple Jack data normalized to the same scale as the training data set
+app_jack <- data.frame(size_g = 28, sugar_g = 12, fat_g = 0.5, sodium_mg = 130)
+for(col in col_trans_list) {
+  col_per <- app_jack[col]/app_jack['size_g']
+  ref_col <- cereal[col]/cereal['size_g']
+  app_jack[paste(col, "_norm", sep = "")] <- (col_per - min(ref_col))/max(ref_col)
+}
+
+# Estimate placement of Apple Jack 
+aj_shelf_probs_trim <- predict(model_cereal_shelves_trim, newdata = app_jack, type = "probs")
+shelf_trim <- aj_shelf_probs_trim[which.max(aj_shelf_probs_trim)]
+shelf_trim
+
+aj_shelf_probs <- predict(model_cereal_shelves_linear, newdata = app_jack, type = "probs")
+shelf <- aj_shelf_probs[which.max(aj_shelf_probs)]
+shelf
 ```
 
 > 'Fill this in: Where does your model predict apple jacks will be placed?'
@@ -90,7 +126,18 @@ aj_shelf_probs <- 'fill this in'
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
 ```{r create figure 3.3}
-shelf_vs_sugar_plot <- 'fill this in'
+fat_mean <- mean(cereal$fat_g_norm)
+na_mean <- mean(cereal$sodium_mg_norm)
+
+df_to_plot <- data.frame(fat_g_norm = rep(fat_mean, times = 100), sodium_mg_norm = rep(na_mean, times = 100), sugar_g_norm = seq(1,100)/100)
+df_to_plot  <- cbind(df_to_plot, predict(model_cereal_shelves_linear, newdata = df_to_plot, type = "probs"))
+
+shelf_vs_sugar_plot <- df_to_plot %>% 
+ pivot_longer(cols = c(4:7), names_to = "indicators", values_to = "values") %>% 
+  ggplot(data = ., aes(x = sugar_g_norm, y = values, colour = indicators)) +
+    geom_line() + theme_minimal()
+
+shelf_vs_sugar_plot
 ```
 
 > 'Fill this in: What message does your plot give?'
