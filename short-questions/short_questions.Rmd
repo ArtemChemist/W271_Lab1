@@ -28,17 +28,28 @@ cereal <- read_csv('../data/short-questions/cereal_dillons.csv')
 (1 point) The explanatory variables need to be reformatted before proceeding further (sample code is provided in the textbook). First, divide each explanatory variable by its serving size to account for the different serving sizes among the cereals. Second, rescale each variable to be within 0 and 1. Construct side-by-side box plots with dot plots overlaid for each of the explanatory variables. Also, construct a parallel coordinates plot for the explanatory variables and the shelf number. Discuss whether possible content differences exist among the shelves.
 
 ```{r recode data}
-
+col_trans_list <- c('fat_g', 'sugar_g', 'sodium_mg')
+for(col in col_trans_list) {
+  col_per <- cereal[col]/cereal['size_g']
+  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per))/max(col_per)
+}
 ```
 
 ```{r boxplots}
+#if("ggpubr" %in% rownames(installed.packages()) == FALSE) {install.packages("ggpubr")}
+#library(ggpubr)
+
+cereal %>% 
+  pivot_longer(cols = 8:10, names_to = "indicators", values_to = "values") %>% 
+  ggplot(data = ., aes(x = indicators, y = values)) +
+    geom_boxplot() + geom_jitter(width = 0.125) + theme_minimal()
 
 ```
 
 > 'Fill in: What do you observe in these boxplots?'
 
 ```{r parallel coordiantes plot}
-
+MASS::parcoord(cereal[c("Shelf", "fat_g_norm", "sodium_mg_norm", "sugar_g_norm")], col = colors()[12*cereal$Shelf])
 ```
 
 > 'Fill in: What do you observe in these parallel coordinates plots?' 
