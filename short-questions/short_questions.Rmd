@@ -15,12 +15,12 @@ library(patchwork)
 ```
 
 # Strategic Placement of Products in Grocery Stores (5 points)
-
 These questions are taken from Question 12 of chapter 3 of the textbook(Bilder and Loughin’s “Analysis of Categorical Data with R.
 
 > *In order to maximize sales, items within grocery stores are strategically placed to draw customer attention. This exercise examines one type of item—breakfast cereal. Typically, in large grocery stores, boxes of cereal are placed on sets of shelves located on one side of the aisle. By placing particular boxes of cereals on specific shelves, grocery stores may better attract customers to them. To investigate this further, a random sample of size 10 was taken from each of four shelves at a Dillons grocery store in Manhattan, KS. These data are given in the *cereal_dillons.csv *file. The response variable is the shelf number, which is numbered from bottom (1) to top (4), and the explanatory variables are the sugar, fat, and sodium content of the cereals.*
 
 ```{r read cereal data, message=FALSE}
+setwd("~/source_code/W271_Lab1")
 cereal <- read_csv('./data/short-questions/cereal_dillons.csv')
 ```
 
@@ -34,7 +34,7 @@ col_trans_list <- c('fat_g', 'sugar_g', 'sodium_mg')
 
 for(col in col_trans_list) {
   col_per <- cereal[col]/cereal['size_g']
-  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per))/max(col_per)
+  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per))/(max(col_per) - min(col_per))
 }
 ```
 
