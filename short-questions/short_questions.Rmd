@@ -21,7 +21,7 @@ These questions are taken from Question 12 of chapter 3 of the textbook(Bilder a
 > *In order to maximize sales, items within grocery stores are strategically placed to draw customer attention. This exercise examines one type of item—breakfast cereal. Typically, in large grocery stores, boxes of cereal are placed on sets of shelves located on one side of the aisle. By placing particular boxes of cereals on specific shelves, grocery stores may better attract customers to them. To investigate this further, a random sample of size 10 was taken from each of four shelves at a Dillons grocery store in Manhattan, KS. These data are given in the *cereal_dillons.csv *file. The response variable is the shelf number, which is numbered from bottom (1) to top (4), and the explanatory variables are the sugar, fat, and sodium content of the cereals.*
 
 ```{r read cereal data, message=FALSE}
-cereal <- read_csv('./data/short-questions/cereal_dillons.csv')
+cereal <- read_csv("./data/short-questions/cereal_dillons.csv")
 ```
 
 
@@ -52,16 +52,16 @@ cereal <- read_csv('./data/short-questions/cereal_dillons.csv')
 > Fill in: What do you think about ordinal data?' 
 
 ```{r multinomial logit regressions}
-model_cereal_shelves_linear    <- 'fill this in'
-model_cereal_shelves_quadratic <- 'fill this in'
+model_cereal_shelves_linear <- "fill this in"
+model_cereal_shelves_quadratic <- "fill this in"
 ```
 
 ```{r likelihood ratio tests: main effects}
-lrt_cereal_main_effects <- 'fill this in'
+lrt_cereal_main_effects <- "fill this in"
 ```
 
 ```{r likelihood ratio tests: interaction effects} 
-lrt_cereal_quadratic_effects <- 'fill this in'
+lrt_cereal_quadratic_effects <- "fill this in"
 ```
 
 > 'Fill in: Write about what you learn as a result of these tests, using inline code evaluation.'
@@ -70,7 +70,7 @@ lrt_cereal_quadratic_effects <- 'fill this in'
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
 
 ```{r predictions for apple jacks}
-aj_shelf_probs <- 'fill this in'
+aj_shelf_probs <- "fill this in"
 ```
 
 > 'Fill this in: Where does your model predict apple jacks will be placed?'
@@ -79,7 +79,7 @@ aj_shelf_probs <- 'fill this in'
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
 ```{r create figure 3.3}
-shelf_vs_sugar_plot <- 'fill this in'
+shelf_vs_sugar_plot <- "fill this in"
 ```
 
 > 'Fill this in: What message does your plot give?'
@@ -88,7 +88,7 @@ shelf_vs_sugar_plot <- 'fill this in'
 (1 point) Estimate odds ratios and calculate corresponding confidence intervals for each explanatory variable. Relate your interpretations back to the plots constructed for this exercise. 
 
 ```{r produce odds ratios}
-odds_ratios <- 'fill this in'
+odds_ratios <- "fill this in"
 ```
 
 > 'Fill this in: What do you learn about each of these variables?' 
@@ -103,7 +103,7 @@ The researchers stated the following hypothesis:
 > *We hypothesized that negative interactions with romantic partners would be associated with alcohol consumption (and an increased desire to drink). We predicted that people with low trait self-esteem would drink more on days they experienced more negative relationship interactions compared with days during which they experienced fewer negative relationship interactions. The relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem.*
 
 ```{r read drinking data, message=FALSE}
-drinks <- read_csv('../data/short-questions/DeHartSimplified.csv')
+drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
 ```
 
 ## EDA 
