@@ -39,9 +39,6 @@ for (col in col_trans_list) {
 ```
 
 ```{r boxplots}
-# if("ggpubr" %in% rownames(installed.packages()) == FALSE) {install.packages("ggpubr")}
-# library(ggpubr)
-
 cereal %>%
   pivot_longer(cols = 8:10, names_to = "indicators", values_to = "values") %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
