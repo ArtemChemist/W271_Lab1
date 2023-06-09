@@ -262,9 +262,9 @@ summary(model_des_saturday)
 (1 point) The researchers hypothesize that the relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem. Conduct an analysis to address this hypothesis.
 
 ```{r Self-Esteem}
-model_neg_rel_saturday <- glm(formula = as.numeric(numall) ~ as.numeric(nrel) + , family = poisson, data = filter(drinks, dayweek =='6'))
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek =='6'))
 summary(model_neg_rel_saturday )
 
-model_neg_rel_tuesday <- glm(formula = as.numeric(numall) ~ as.numeric(nrel), family = poisson, data = filter(drinks, dayweek =='2'))
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek =='2'))
 summary(model_neg_rel_tuesday )
 ```
