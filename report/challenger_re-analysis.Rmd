@@ -7,7 +7,7 @@ fontsize: 11pt
 geometry: margin=1in
 ---
 
-\newpage
+\newpagecool
 
 ```{=tex}
 \begin{abstract} 
@@ -17,6 +17,19 @@ This report will, indeed, be abstract. No, instead, describe your goals your app
 # Introduction
 
 ## Research question
+```{r load packages, message=FALSE}
+library(car)
+library(sandwich)
+library(lmtest)
+library(knitr)
+library(Hmisc)
+library(gridExtra)
+library(stargazer)
+library(mcprofile)
+library(readr)
+library(dplyr)
+library(finalfit)
+```
 
 # Data (20 points)
 
@@ -29,24 +42,120 @@ This report will, indeed, be abstract. No, instead, describe your goals your app
 
 -   This EDA should begin with an inspection of the given dataset; examination of anomalies, missing values, potential of top and/or bottom code etc.
 
+```{r}
+data <- read.csv("../data/raw/challenger.csv")
+data
+```
+
+
+```{r}
+summary(data)
+```
+
+```{r}
+describe(data)
+```
+
+```{r}
+# Histograms
+hist(data$Temp, main="Joint Temperature Distribution", xlab="Temp")
+hist(data$Pressure, main="Field Leak-Pressure Distribution", xlab="Pressure")
+```
+
+```{r}
+# Define colors based on O.ring values
+color <- ifelse(data$O.ring > 0, "red", "green")
+
+# Create the scatter plot
+plot(data$Temp, data$O.ring, xlab = "Temperature", ylab = "O-ring", main = "Temperature vs. O-ring", pch = 19, col = color)
+# Create a legend
+legend("topright", legend = c("Flights with no incidents", "Number of Incidents"), col = c("green", "red"), pch = 19)
+
+```
+
+```{r}
+data %>%
+  count(O.ring) %>%
+  mutate(prop = round(prop.table(n),2)) %>%
+  kable(col.names = c('Incidents', 'Number', "Proportion"))
+```
+
+```{r}
+plot_box = function(data,x,y,title) {
+  ggplot(data, aes(factor(x), y)) +  
+  geom_boxplot(aes(fill = factor(x))) + 
+  geom_jitter() +
+  coord_flip() +
+  ggtitle(title) + 
+  theme(plot.title = element_text(lineheight=1, face="bold")) 
+}
+
+# Admit and GRE
+p3 <- plot_box(data, x=data$O.ring, y=data$Temp,
+               title="Figure 1: O-ring incident by Temperature")
+
+# Admit and GPA
+p4 <- plot_box(data, x=data$O.ring, y=data$Pressure, 
+               title="Figure 2: O-ring incident by Pressure")
+
+grid.arrange(p3, p4, nrow = 2, ncol = 1)
+
+
+```
+
 ## Description
 
 **Complete the following task. In your final submission, please remove this question prompt so that your report reads as a report.**
-
+ 
 -   Describe the data that you are using. How is this data generated, what is the sampling process that brought it to your availability. If it is helpful, you might describe the population (i.e. the Random Variables) that exist and how samples are produced from these random variables.
+
 -   The authors use logistic regression to estimate the probability an O-ring will fail. In order to use this model, the authors needed to assume that each O-ring is independent for each launch. Discuss why this assumption is necessary and the potential problems with it. Note that a subsequent analysis helped to alleviate the authors' concerns about independence.
 
 ## Key Features
 
-(AKA EDA)
+--------
 
 # Analysis
+
+---------
 
 ## Reproducing Previous Analysis (10 points)
 
 **Your analysis should address the following two questions. In your final submission, please remove this question prompt so that your report reads as a report.**
 
 1.  Estimate the logistic regression model that the authors present in their report -- include the variables as linear terms in the model. Evaluate, using likelihood ratio tests, the statistical significance of each explanatory variable in the model. Evaluate, using the context and data understanding that you have created in the **Data** section of this report, the practical significance of each explanatory variable in the model.
+
+
+```{r}
+# Check if O.ring is a factor, if not convert it
+if (!is.factor(data$O.ring)) {
+  data$O.ring <- as.factor(data$O.ring)
+}
+
+# Fit the logistic regression model
+model <- glm(O.ring ~ Temp + Pressure, data = data, family = binomial(link = "logit"))
+
+# Fit reduced models
+model_temp <- glm(O.ring ~ Pressure, data = data, family = binomial(link = "logit"))
+model_pressure <- glm(O.ring ~ Temp, data = data, family = binomial(link = "logit"))
+
+summary(model)
+```
+The coefficient of -0.228671 indicates that for each additional degree in temperature, the log-odds of O-ring failure decrease by about 0.23, holding pressure constant. This would suggest that higher temperatures are associated with a lower risk of O-ring failure. Because the p-value (0.0376) is below 0.05, this result is statistically significant at the 5% level.
+
+The coefficient of 0.010400 suggests that for each additional unit increase in pressure, the log-odds of O-ring failure increase by about 0.01, holding temperature constant. However, the p-value (0.2468) is greater than 0.05, suggesting that this result is not statistically significant at the 5% level. Therefore, based on this model, pressure does not have a significant effect on the log-odds of O-ring failure.
+
+
+```{r}
+summary(model_temp)
+```
+
+
+```{r}
+summary(model_pressure)
+```
+
+
 
 2.  Dalal, Fowlkes, and Hoadley (1989) chose to remove `pressure` from the model based on their likelihood ratio tests. Critically evaluate, using your test results and understanding of the question and data, whether `pressure` should be included in the model, or instead, `pressure` should not be included in the model. Your report needs to make a determination, argue why it is most appropriate choice, and make note of how (if at all) the model results are affected by the choice of including or excluding `pressure`.
 
