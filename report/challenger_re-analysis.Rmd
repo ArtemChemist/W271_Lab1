@@ -136,8 +136,8 @@ if (!is.factor(data$O.ring)) {
 model <- glm(O.ring ~ Temp + Pressure, data = data, family = binomial(link = "logit"))
 
 # Fit reduced models
-model_temp <- glm(O.ring ~ Pressure, data = data, family = binomial(link = "logit"))
-model_pressure <- glm(O.ring ~ Temp, data = data, family = binomial(link = "logit"))
+model_temp <- glm(O.ring ~ Temp, data = data, family = binomial(link = "logit"))
+model_pressure <- glm(O.ring ~ Pressure, data = data, family = binomial(link = "logit"))
 
 summary(model)
 ```
@@ -145,15 +145,30 @@ The coefficient of -0.228671 indicates that for each additional degree in temper
 
 The coefficient of 0.010400 suggests that for each additional unit increase in pressure, the log-odds of O-ring failure increase by about 0.01, holding temperature constant. However, the p-value (0.2468) is greater than 0.05, suggesting that this result is not statistically significant at the 5% level. Therefore, based on this model, pressure does not have a significant effect on the log-odds of O-ring failure.
 
+From a practical perspective, temperature seems to have a significant effect on O-ring failure, with higher temperatures reducing the likelihood of failure. However, pressure doesn't seem to significantly affect the likelihood of failure.
 
 ```{r}
-summary(model_temp)
+# Perform likelihood ratio tests
+anova(model_temp, model, test = "LRT")
 ```
+The test compares the deviances of the two models to assess whether adding Pressure to the model significantly improves the model fit. The deviance difference (1.5331) is not statistically significant (p=0.2156), as indicated by the Pr(>Chi) value. This means that, based on this test, adding Pressure as a predictor does not significantly improve the model.
+
+```{r}
+anova(model_pressure, model, test = "LRT")
+```
+The test compares the deviances of the two models to assess whether adding Temp to the model significantly improves the model fit. The deviance difference (7.7542) is statistically significant (p=0.005359), as indicated by the Pr(>Chi) value. This means that adding Temp as a predictor significantly improves the model.
+
+In summary, these results suggest that Temp is a significant predictor of O.ring failure, while Pressure is not, at least not when added to a model that already includes Temp.
 
 
 ```{r}
-summary(model_pressure)
+exp(coef(model))
 ```
+
+The exponentiated coefficient for Temp is 0.7955903. This means that for each unit increase in Temp, the odds of O-ring failure are multiplied by approximately 0.80, or in other words, they decrease by about 20%, assuming all other variables are held constant. This matches with our previous interpretation that an increase in temperature decreases the likelihood of O-ring failure.
+
+The exponentiated coefficient for Pressure is 1.010454. This means that for each unit increase in Pressure, the odds of O-ring failure are multiplied by approximately 1.01, or they increase by about 1%, assuming all other variables are held constant. However, remember from the earlier analysis that this effect was not statistically significant.
+
 
 
 
