@@ -81,6 +81,64 @@ Using the parametric bootstrap, compute 90% confidence intervals separately at e
 
 In this section, you should describe your process, justify such a process, and present your results in a way that is compelling for your reader.
 
+
+
+```{r load packages for homework 2, message=FALSE}
+library(tidyverse)
+library(patchwork)
+```
+
+```{r read challenger data, message=FALSE}
+setwd("~/source_code/W271_Lab1")
+oring_df <- read_csv("./data/raw/challenger.csv")
+oring_df$failure <- oring_df$O.ring
+oring_df$failure[oring_df$failure >0] <- 1
+oring_df$failure <-factor(oring_df$failure, levels = c(0,1))
+```
+
+
+```{r Bootstrap}
+set.seed(123)
+if (!"tidymodels" %in% rownames(installed.packages())) {
+  install.packages("tidymodels")
+}
+library(tidymodels)
+oring_boot <- bootstraps(oring_df,
+  times = 1e3,
+  apparent = TRUE
+)
+```
+
+```{r Boot 1}
+oring_models <- oring_boot %>%
+  mutate(
+      model = map(splits, ~ glm(formula = failure ~ Temp, family = binomial(), data = .)
+    ),
+    coef_inf = map(model, tidy)
+  )
+```
+
+```{r}
+#oring_models_filtered <- filter(oring_models, term == "Temp")
+oring_coefs <- oring_models %>%
+  unnest(coef_inf)
+```
+
+```{r bootstrap graphing}
+oring_coefs %>% filter(term == 'Temp') %>%
+  ggplot(aes(estimate))+
+  geom_histogram(alpha = .7)+
+  ggtitle("Distribution of Estimated Slope")+
+  xlab("Estimate")+
+  ylab("Frequency")+
+  theme_linedraw()+
+  theme(axis.title=element_text(size=14,face="bold"),
+        plot.title = element_text(size = 20, face = "bold"))
+```
+```{r}
+int_pctl(oring_models,
+         coef_inf)
+```
 ## Alternative Specification (10 points)
 
 With the same set of explanatory variables in your final model, estimate a linear regression model. Explain the model results; conduct model diagnostic; and assess the validity of the model assumptions. Would you use the linear regression model or binary logistic regression in this case? Explain why.
