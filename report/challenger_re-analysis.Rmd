@@ -81,8 +81,6 @@ Using the parametric bootstrap, compute 90% confidence intervals separately at e
 
 In this section, you should describe your process, justify such a process, and present your results in a way that is compelling for your reader.
 
-
-
 ```{r load packages for homework 2, message=FALSE}
 library(tidyverse)
 library(patchwork)
@@ -95,6 +93,7 @@ oring_df$failure <- oring_df$O.ring
 oring_df$failure[oring_df$failure >0] <- 1
 oring_df$failure <-factor(oring_df$failure, levels = c(0,1))
 ```
+
 ```{r}
 model_zero <- glm(formula=failure~Temp, family=binomial(), data=oring_df)
 summary(model_zero)
@@ -119,20 +118,31 @@ bs <- function(formula, data, indices) {
 results <- boot(data=oring_df, statistic=bs,
    R=1000, formula=failure~Temp)
 ```
+
 ```{r}
 results$t <- results$t[results$t[,3] > 0.01,]
 results$R <- nrow(results$t)
 ```
 
-
 ```{r}
 plot(results, index=1) # intercept
-plot(results, index=2) # wt
+plot(results, index=2) # Temp
 ```
 
 ```{r bootstrap graphing}
-boot.ci(results, type="bca", index=1) # intercept
-boot.ci(results, type="bca", index=2) # wt 
+int.conf <- boot.ci(results, conf = 0.9, type="bca", index=1) # intercept
+slope.conf <- boot.ci(results, conf = 0.9, type="bca", index=2) # Temp
+```
+
+``` {r}
+temps <- seq(10,100)
+int_var <-sum((results$t[,1]-results$t0[1])^2)/(results$R-1)
+slope_var <-sum((results$t[,2]-results$t0[2])^2)/(results$R-1)
+
+# For a given temperature, calculate predicted CI of logit.OR
+# For this temp calculate OR
+# Repear that for each temp
+#odd.ratio.high
 ```
 
 ## Alternative Specification (10 points)
