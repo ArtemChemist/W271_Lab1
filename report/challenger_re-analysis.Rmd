@@ -244,14 +244,17 @@ Not needed.
 temp_range <- seq(31, 81, length.out = 100)
 
 prob_est <- predict(model_temp, newdata = data.frame(Temp = temp_range), type = "response")
-conf_int <- predict(model_temp, newdata = data.frame(Temp = temp_range), type = "response", se.fit = TRUE)
+conf_int <- predict(model_temp, newdata = data.frame(Temp = temp_range), type = "link", se.fit = TRUE)
 
-conf_int_up <- plogis(conf_int$fit + 1.96 * conf_int$se.fit)
-conf_int_low <- plogis(conf_int$fit - 1.96 * conf_int$se.fit)
+alpha = 0.05
+CI.pred.upper = conf_int$fit + qnorm(0.95)*conf_int$se.fit
+CI.pred.lower = conf_int$fit + qnorm(0.05)*conf_int$se.fit
+CI.pi.upper = exp(CI.pred.upper)/(1+exp(CI.pred.upper))
+CI.pi.lower = exp(CI.pred.lower)/(1+exp(CI.pred.lower))
 
 plot(temp_range, prob_est, type = "l", xlab = "Temperature", ylab = "Probability of O-ring failure", col='red')
-lines(temp_range, conf_int_low, lty = 2, col='blue')
-lines(temp_range, conf_int_up, lty = 2, col='blue')
+lines(temp_range, CI.pi.upper, lty = 2, col='blue')
+lines(temp_range, CI.pi.lower, lty = 2, col='blue')
 legend("bottomright", 
        legend = c("Confidence Interval", "Fitted Model"),  
        col = c("blue", "red"), 
@@ -279,14 +282,17 @@ Specific requirements for these plots:
 
 
 ```{r}
+
 prob_31 <- predict(model_temp, newdata = data.frame(Temp = 31), type = "response")
-conf_int_31 <- predict(model_temp, newdata = data.frame(Temp = 31), type = "response", se.fit = TRUE)
-conf_int_31_up <- plogis(conf_int_31$fit + 1.96 * conf_int_31$se.fit)
-conf_int_31_low <- plogis(conf_int_31$fit - 1.96 * conf_int_31$se.fit)
+conf_int_31 <- predict(model_temp, newdata = data.frame(Temp = 31), type = "link", se.fit = TRUE)
+CI_31.pred.upper = conf_int_31$fit + qnorm(0.95)*conf_int_31$se.fit
+CI_31.pred.lower = conf_int_31$fit + qnorm(0.05)*conf_int_31$se.fit
+CI_31.pi.upper = exp(CI_31.pred.upper)/(1+exp(CI_31.pred.upper))
+CI_31.pi.lower = exp(CI_31.pred.lower)/(1+exp(CI_31.pred.lower))
 
 prob_31
-conf_int_31_low
-conf_int_31_up
+CI_31.pi.upper
+CI_31.pi.lower
 
 ```
 
