@@ -39,9 +39,6 @@ for (col in col_trans_list) {
 ```
 
 ```{r boxplots}
-# if("ggpubr" %in% rownames(installed.packages()) == FALSE) {install.packages("ggpubr")}
-# library(ggpubr)
-
 cereal %>%
   pivot_longer(cols = 8:10, names_to = "indicators", values_to = "values") %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
@@ -173,18 +170,101 @@ drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
 ## EDA 
 (2 points) Conduct a thorough EDA of the data set, giving special attention to the relationships relevant to the researchers' hypotheses. Address the reasons for limiting the study to observations from only one day.
 
-```{r drinking EDA}
-
+```{r drinking EDA 1}
+drinks_scaled <- as.data.frame(scale(drinks))
+drinks_scaled%>%
+  pivot_longer(cols = 3:13, names_to = "indicators", values_to = "values") %>%
+  ggplot(data = ., aes(x = indicators, y = values)) +
+  geom_boxplot() +
+  theme_minimal()
 ```
 
+```{r Drinking EDA 2}
+library(ggpubr)
+neg_plot <- ggplot(data = drinks,
+                   aes(x = nrel,
+                       fill = as.factor(dayweek),
+                       colour = as.factor(dayweek))
+                       ) +
+            geom_density(alpha = 0.2) +
+            theme_minimal() +
+            theme(legend.position = c(0.15, 0.8)) +
+            guides(fill = guide_legend(title = "Neg romantic event"),
+                   colour = guide_legend(title = "Neg romantic event")) +
+              xlim(0, 2)
+
+pos_plot <- ggplot(data = drinks,
+                   aes(x = prel,
+                       fill = as.factor(dayweek),
+                       colour = as.factor(dayweek))
+                       ) +
+            geom_density(alpha = 0.2) +
+            theme_minimal() +
+            theme(legend.position = c(0.15, 0.8)) +
+            guides(fill = guide_legend(title = "Pos romantic event"),
+                   colour = guide_legend(title = "Pos romantic event"))
+
+tot_plot <- ggplot(data = drinks,
+                   aes(x = numall,
+                       fill = as.factor(dayweek),
+                       colour = as.factor(dayweek))
+                       ) +
+            geom_density(alpha = 0.2) +
+            theme_minimal() +
+            theme(legend.position = c(0.15, 0.8)) +
+            guides(fill = guide_legend(title = "Total drinks"),
+                   colour = guide_legend(title = "Total drinks"))
+
+sest_plot <- ggplot(data = drinks,
+                   aes(x = desired,
+                       fill = as.factor(dayweek),
+                       colour = as.factor(dayweek))
+                       ) +
+            geom_density(alpha = 0.2) +
+            theme_minimal() +
+            theme(legend.position = c(0.15, 0.8)) +
+            guides(fill = guide_legend(title = "Desire"),
+                   colour = guide_legend(title = "Desire"))
+
+ggarrange(NULL, NULL, neg_plot, pos_plot, NULL, NULL, tot_plot, sest_plot,
+          labels = c("Neg", "Pos", "", "", "Tot", "Desire", "", ""),
+          ncol = 2, nrow = 4, heights = c(0.1, 1, 0.1, 1))
+```
+
+```{r Drinking EDA 3, results='asis'}
+library(stargazer)
+stargazer(as.data.frame(drinks), header = FALSE, type = "latex")
+```
 > 'Fill this in: What do you learn?' 
 
 ## Hypothesis One 
 (2 points) The researchers hypothesize that negative interactions with romantic partners would be associated with alcohol consumption and an increased desire to drink. Using appropriate models, evaluate the evidence that negative relationship interactions are associated with higher alcohol consumption and an increased desire to drink. 
 
+```{r Poisson}
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek =='6'))
+summary(model_neg_rel_saturday )
+
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek =='2'))
+summary(model_neg_rel_tuesday )
+
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek =='6'))
+summary(model_neg_rel_saturday )
+
+model_des_tuesday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek =='2'))
+summary(model_des_tuesday)
+
+model_des_saturday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek =='6'))
+summary(model_des_saturday)
+```
 > 'Fill this in: What do you learn?' 
 
 ## Hypothesis Two
 (1 point) The researchers hypothesize that the relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem. Conduct an analysis to address this hypothesis.
 
-> 'Fill this in: What do you learn?' 
+```{r Self-Esteem}
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek =='6'))
+summary(model_neg_rel_saturday )
+
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek =='2'))
+summary(model_neg_rel_tuesday )
+```
