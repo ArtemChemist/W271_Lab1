@@ -95,50 +95,46 @@ oring_df$failure <- oring_df$O.ring
 oring_df$failure[oring_df$failure >0] <- 1
 oring_df$failure <-factor(oring_df$failure, levels = c(0,1))
 ```
-
+```{r}
+model_zero <- glm(formula=failure~Temp, family=binomial(), data=oring_df)
+summary(model_zero)
+```
 
 ```{r Bootstrap}
 set.seed(123)
-if (!"tidymodels" %in% rownames(installed.packages())) {
-  install.packages("tidymodels")
+if (!"boot" %in% rownames(installed.packages())) {
+  install.packages("boot")
 }
-library(tidymodels)
-oring_boot <- bootstraps(oring_df,
-  times = 1e3,
-  apparent = TRUE
-)
+library(boot)
+
+bs <- function(formula, data, indices) {
+  d <- data[indices,] # allows boot to select sample
+  fit <- glm(formula, family=binomial(), data=d)
+  return(c(coef(fit), summary(fit)$deviance))
+} 
 ```
 
 ```{r Boot 1}
-oring_models <- oring_boot %>%
-  mutate(
-      model = map(splits, ~ glm(formula = failure ~ Temp, family = binomial(), data = .)
-    ),
-    coef_inf = map(model, tidy)
-  )
+# bootstrapping with 1000 replications
+results <- boot(data=oring_df, statistic=bs,
+   R=1000, formula=failure~Temp)
+```
+```{r}
+results$t <- results$t[results$t[,3] > 0.01,]
+results$R <- nrow(results$t)
 ```
 
+
 ```{r}
-#oring_models_filtered <- filter(oring_models, term == "Temp")
-oring_coefs <- oring_models %>%
-  unnest(coef_inf)
+plot(results, index=1) # intercept
+plot(results, index=2) # wt
 ```
 
 ```{r bootstrap graphing}
-oring_coefs %>% filter(term == 'Temp') %>%
-  ggplot(aes(estimate))+
-  geom_histogram(alpha = .7)+
-  ggtitle("Distribution of Estimated Slope")+
-  xlab("Estimate")+
-  ylab("Frequency")+
-  theme_linedraw()+
-  theme(axis.title=element_text(size=14,face="bold"),
-        plot.title = element_text(size = 20, face = "bold"))
+boot.ci(results, type="bca", index=1) # intercept
+boot.ci(results, type="bca", index=2) # wt 
 ```
-```{r}
-int_pctl(oring_models,
-         coef_inf)
-```
+
 ## Alternative Specification (10 points)
 
 With the same set of explanatory variables in your final model, estimate a linear regression model. Explain the model results; conduct model diagnostic; and assess the validity of the model assumptions. Would you use the linear regression model or binary logistic regression in this case? Explain why.
