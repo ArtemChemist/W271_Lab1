@@ -9,9 +9,13 @@ output:
 fontsize: 11pt
 ---
 
-```{r load packages for homework 2, message=FALSE, warning=FALSE}
+```{r load packages for homework 2, message=FALSE, warning=FALSE, echo = FALSE}
 library(tidyverse)
 library(patchwork)
+library(nnet)
+library(car)
+library(ggpubr)
+library(stargazer)
 ```
 
 # Strategic Placement of Products in Grocery Stores (5 points)
@@ -32,8 +36,8 @@ names(cereal) <- c("ID", "Shelf", "Cereal", "size_g",
 (1 point) The explanatory variables need to be reformatted before proceeding further (sample code is provided in the textbook). First, divide each explanatory variable by its serving size to account for the different serving sizes among the cereals. Second, rescale each variable to be within 0 and 1. Construct side-by-side box plots with dot plots overlaid for each of the explanatory variables. Also, construct a parallel coordinates plot for the explanatory variables and the shelf number. Discuss whether possible content differences exist among the shelves.
 
 ```{r recode data}
-# Rescale columns in the following list
-# Create new columns for rescaled data
+# Re-scale columns in the following list
+# Create new columns for re-scaled data
 col_trans_list <- c("fat_raw", "sugar_raw", "sodium_raw") 
 
 for (col in col_trans_list) {
@@ -68,8 +72,7 @@ MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")],
 
 > It makes most sense to use Shelf as a categorical variable. While there is natural order to shelves, it is likely irrelevant to the price setting. Prime shelves are in the middle of the rack and supermarkets often stock those shelves with the most popular ites. Therefore, desirability scale might differ from the physcial scale. In this situation we belive using thsi variable as categorical makes most sense. 
 
-```{r multinomial logit regressions, message=FALSE}
-library(nnet)
+```{r multinomial logit regressions, message=FALSE, results = FALSE}
 # Set Shelf as a categorical value
 cereal$Shelf <- factor(cereal$Shelf, levels = c("1", "2", "3", "4"))
 
@@ -89,7 +92,6 @@ model_cereal_shelves_quadratic <- multinom(
 ```
 
 ```{r likelihood ratio tests: main effects}
-library(car)
 # Conduct Anova test on linear model
 lrt_cereal_main_effects <- car::Anova(model_cereal_shelves_linear)
 lrt_cereal_main_effects
@@ -193,7 +195,6 @@ drinks_scaled %>%
 ```
 
 ```{r Drinking EDA 2}
-library(ggpubr)
 neg_plot <- ggplot(
   data = drinks,
   aes(
@@ -266,7 +267,6 @@ ggarrange(NULL, NULL, neg_plot, pos_plot, NULL, NULL, tot_plot, sest_plot,
 ```
 
 ```{r Drinking EDA 3, results='asis'}
-library(stargazer)
 stargazer(as.data.frame(drinks), header = FALSE, type = "latex")
 ```
 > 'Fill this in: What do you learn?' 
