@@ -11,6 +11,9 @@ fontsize: 11pt
 ```{r load packages for homework 2, message=FALSE}
 library(tidyverse)
 library(patchwork)
+library(GGally)
+library(nnet)
+library(car)
 ```
 
 # Strategic Placement of Products in Grocery Stores (5 points)
@@ -21,6 +24,7 @@ These questions are taken from Question 12 of chapter 3 of the textbook(Bilder a
 
 ```{r read cereal data, message=FALSE}
 cereal <- read_csv('../data/short-questions/cereal_dillons.csv')
+cereal
 ```
 
 
@@ -28,77 +32,134 @@ cereal <- read_csv('../data/short-questions/cereal_dillons.csv')
 (1 point) The explanatory variables need to be reformatted before proceeding further (sample code is provided in the textbook). First, divide each explanatory variable by its serving size to account for the different serving sizes among the cereals. Second, rescale each variable to be within 0 and 1. Construct side-by-side box plots with dot plots overlaid for each of the explanatory variables. Also, construct a parallel coordinates plot for the explanatory variables and the shelf number. Discuss whether possible content differences exist among the shelves.
 
 ```{r recode data}
-col_trans_list <- c('fat_g', 'sugar_g', 'sodium_mg')
-for(col in col_trans_list) {
-  col_per <- cereal[col]/cereal['size_g']
-  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per))/max(col_per)
+stand01 <- function(x){
+  (x - min(x))/(max(x) - min(x))
 }
+cereal2 <- data.frame(
+  Shelf = cereal$Shelf,
+  Cereal = cereal$Cereal,
+  sugar = stand01(x = cereal$sugar_g/cereal$size_g),
+  fat = stand01(x = cereal$fat_g/cereal$size_g),
+  sodium = stand01(x = cereal$sodium_mg/cereal$size_g)
+)
 ```
 
 ```{r boxplots}
-#if("ggpubr" %in% rownames(installed.packages()) == FALSE) {install.packages("ggpubr")}
-#library(ggpubr)
+# Sugar
+boxplot(formula = sugar ~ Shelf, data = cereal2, ylab = "Sugar", xlab = "Shelf", pars = list(outpch = NA))
+stripchart(x = cereal2$sugar ~ cereal2$Shelf, lwd = 2, col = "red", method = "jitter", vertical = TRUE, pch = 1, add = TRUE)
 
-cereal %>% 
-  pivot_longer(cols = 8:10, names_to = "indicators", values_to = "values") %>% 
-  ggplot(data = ., aes(x = indicators, y = values)) +
-    geom_boxplot() + geom_jitter(width = 0.125) + theme_minimal()
+# Fat
+boxplot(formula = fat ~ Shelf, data = cereal2, ylab = "Fat", xlab = "Shelf", pars = list(outpch = NA))
+stripchart(x = cereal2$fat ~ cereal2$Shelf, lwd = 2, col = "red", method = "jitter", vertical = TRUE, pch = 1, add = TRUE)
 
+# Sodium
+boxplot(formula = sodium ~ Shelf, data = cereal2, ylab = "Sodium", xlab = "Shelf", pars = list(outpch = NA))
+stripchart(x = cereal2$sodium ~ cereal2$Shelf, lwd = 2, col = "red", method = "jitter", vertical = TRUE, pch = 1, add = TRUE)
 ```
 
-> 'Fill in: What do you observe in these boxplots?'
+> It appears that the items that are higher in sodium tend to be on shelf #1. Items that are high in sugar tend to go on shelf #2. For fat, there does not appear to be any obvious trends of which shelf items that are high or low in fat go to.
 
-```{r parallel coordiantes plot}
-MASS::parcoord(cereal[c("Shelf", "fat_g_norm", "sodium_mg_norm", "sugar_g_norm")], col = colors()[12*cereal$Shelf])
+```{r parallel coordinates plot}
+cereal2$ShelfNumber <- as.character(cereal2$Shelf)
+ggparcoord(data = cereal2, columns = 3:5, groupColumn = "ShelfNumber", showPoints = TRUE, scale = "uniminmax")
 ```
 
-> 'Fill in: What do you observe in these parallel coordinates plots?' 
+> The parallel coordinates plot is harder to glean information from than the box plots. When looking closely one can find much of the same information that was found in the box plots. Namely, the highest sugar items belonging to shelf #2 and the high sodium items being found in shelf #1.
 
-> Fill in: Do content differences exist between the shelves?'
+> Without running an regression it is not responsible to say definitively whether or not a content different exists between the shelves. Based on these graphs there doesn't seem to be too big of a relationship between sugar, fat, and sodium and the shelf a cereal belongs to.
 
 ## Evaluate Ordinal vs. Categorical 
 (1 point) The response has values of $1, 2, 3,$ and $4$. Explain under what setting would it be desirable to take into account ordinality, and whether you think that this setting occurs here. Then estimate a suitable multinomial regression model with linear forms of the sugar, fat, and sodium variables. Perform LRTs to examine the importance of each explanatory variable. Show that there are no significant interactions among the explanatory variables (including an interaction among all three variables).
 
-> Fill in: What do you think about ordinal data?' 
+> Ordinal data would make sense in the case where there's a natural ordering to the shelves. Such as if higher shelves were inherently more desirable than lower shelves. Then it would be expected that better selling products be placed on higher shelves. It doesn't appear as if this is the case here as the most desirable shelves would likely be at eye level (towards the middle) and there doesn't appear to be any other sort of ordering at play.
 
 ```{r multinomial logit regressions}
-model_cereal_shelves_linear    <- 'fill this in'
-model_cereal_shelves_quadratic <- 'fill this in'
+model_cereal_shelves_linear    <- multinom(formula = factor(Shelf) ~ sugar + fat + sodium, data = cereal2, family = "multinomial")
+model_cereal_shelves_quadratic <- multinom(formula = factor(Shelf) ~ sugar*fat*sodium, data = cereal2, family = "multinomial")
+model_cereal_shelves_linear
+model_cereal_shelves_quadratic
 ```
 
 ```{r likelihood ratio tests: main effects}
-lrt_cereal_main_effects <- 'fill this in'
+lrt_cereal_main_effects <- Anova(model_cereal_shelves_linear, test = "LR")
+lrt_cereal_main_effects
 ```
 
 ```{r likelihood ratio tests: interaction effects} 
-lrt_cereal_quadratic_effects <- 'fill this in'
+lrt_cereal_quadratic_effects <- Anova(model_cereal_shelves_quadratic, test = "LR")
+lrt_cereal_quadratic_effects
 ```
 
-> 'Fill in: Write about what you learn as a result of these tests, using inline code evaluation.'
+> Similar to what the graphs show there is clearly an obvious relationship between sugar, sodium, and shelf placement. The Anova test shows that none of the interaction terms are significant as well as the linear fat variable.
 
 ## Where do you think Apple Jacks will be placed? 
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
 
 ```{r predictions for apple jacks}
-aj_shelf_probs <- 'fill this in'
+stand02 <- function(x, min, max){
+  (x - min)/(max - min)
+}
+cereal3 <- data.frame(
+  sugar = stand02(12/28, 0, 20),
+  fat = stand02(0.5/28, 0, 5),
+  sodium = stand02(130/28, 0, 330)
+)
+cereal3
+
+pi.hat.1 <- predict(object = model_cereal_shelves_linear, newdata = cereal3, type = "probs")
+
+aj_shelf_probs <- round(head(pi.hat.1), 4)
+aj_shelf_probs
 ```
 
-> 'Fill this in: Where does your model predict apple jacks will be placed?'
+> The model predicts that Apple Jacks be placed on shelf #3.
 
 ## Figure 3.3 
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
 ```{r create figure 3.3}
-shelf_vs_sugar_plot <- 'fill this in'
+sugar <- stand02(seq(0, 20, by=0.1), 0, 20)
+mean_fat <- replicate(201, mean(stand01(cereal2$fat)))
+mean_sodium <- replicate(201, mean(stand01(cereal2$sodium)))
+cereal4 <- data.frame(
+  sugar = sugar,
+  fat = mean_fat,
+  sodium = mean_sodium
+)
+pi.hat.2 <- predict(object = model_cereal_shelves_linear, newdata = cereal4, type = "probs")
+
+plot.data <- data.frame(prediction = pi.hat.2, observed = seq(0, 20, by=0.1))
+shelf_vs_sugar_plot <- ggplot(plot.data, aes(x = observed)) + 
+  geom_line(aes(y = prediction.1)) +
+  geom_line(aes(y = prediction.2), linetype = "dashed") +
+  geom_line(aes(y = prediction.3), linetype = "dotted") +
+  geom_line(aes(y = prediction.4), linetype = "twodash") +
+  labs(title = "Predicted Probabilities of Shelf", y = "Probability", x = "Sugar")
+
+shelf_vs_sugar_plot
 ```
 
-> 'Fill this in: What message does your plot give?'
+> As sugar increases the likelihood of being on shelf 1 or shelf 2 increases. When sugar is low the cereal is most likely to be placed on shelf 3 or 4.
 
 ## Odds ratios 
 (1 point) Estimate odds ratios and calculate corresponding confidence intervals for each explanatory variable. Relate your interpretations back to the plots constructed for this exercise. 
 
 ```{r produce odds ratios}
-odds_ratios <- 'fill this in'
+coefs.2 <- coef(model_cereal_shelves_linear)[1,]
+se.2 <- summary(model_cereal_shelves_linear)$standard.errors[1,]
+ci.2 <- data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2))
+
+coefs.2 <- coef(model_cereal_shelves_linear)[1,]
+se.2 <- summary(model_cereal_shelves_linear)$standard.errors[1,]
+ci.2 <- data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2))
+
+coefs.2 <- coef(model_cereal_shelves_linear)[1,]
+se.2 <- summary(model_cereal_shelves_linear)$standard.errors[1,]
+ci.2 <- data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2))
+
+odds_ratios <- 'fillin'
+odds_ratios
 ```
 
 > 'Fill this in: What do you learn about each of these variables?' 
