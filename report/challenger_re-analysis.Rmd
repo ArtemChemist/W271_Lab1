@@ -223,11 +223,15 @@ No matter what you determined about using or dropping `pressure`, for this secti
 
 1.  Estimate the logistic regression model.
 
-
 ```{r}
 model_temp <- glm(O.ring ~ Temp, family = binomial(link = "logit"), data = data)
 coef(model_temp)
 ```
+
+```{r}
+data
+```
+
 
 2.  Determine if a quadratic term is needed in the model for the temperature in this model.
 
@@ -297,9 +301,6 @@ CI_31.pi.lower
 
 ```
 
-
-
-
 ## Bootstrap Confidence Intervals (30 points)
 
 Rather than relying on asymptotic properties, consider using a parametric bootstrap, as did Dalal, Fowlkes and Hoadley. To do this:
@@ -315,13 +316,58 @@ Using the parametric bootstrap, compute 90% confidence intervals separately at e
 In this section, you should describe your process, justify such a process, and present your results in a way that is compelling for your reader.
 
 ```{r}
+# Set the number of bootstrap samples
+B <- 1000
 
+# Initialize a matrix to store the predicted probabilities
+probs <- matrix(NA, nrow = B, ncol = 91)
+
+# Loop over bootstrap samples
+for(b in 1:B){
+  
+  # Resample the data
+  data_resampled <- data[sample(nrow(data), replace = TRUE), ]
+  
+  # Fit the logistic regression model
+  fit <- glm(O.ring ~ Temp, data = data_resampled, family = binomial)
+  
+  # Compute the predicted probabilities for temperatures from 10 to 100
+  for(temp in 10:100){
+    probs[b, temp - 9] <- predict(fit, newdata = data.frame(Temp = temp), type = "response")
+  }
+}
+
+# Compute the 90% bootstrap confidence intervals
+CI_lower <- apply(probs, 2, function(x) quantile(x, probs = 0.05))
+CI_upper <- apply(probs, 2, function(x) quantile(x, probs = 0.95))
+
+# Print the confidence intervals
+data.frame(Temperature = 10:100, CI_lower, CI_upper)
+```
+
+
+```{r}
+data.frame(Temperature = 10:100, CI_lower, CI_upper)
 ```
 
 
 ## Alternative Specification (10 points)
 
 With the same set of explanatory variables in your final model, estimate a linear regression model. Explain the model results; conduct model diagnostic; and assess the validity of the model assumptions. Would you use the linear regression model or binary logistic regression in this case? Explain why.
+
+```{r}
+linear_model <- lm(O.ring ~ Temp + Pressure, data = data)
+summary(linear_model)
+```
+
+```{r}
+plot(linear_model$fitted.values, linear_model$residuals)
+```
+```{r}
+qqnorm(linear_model$residuals)
+qqline(linear_model$residuals)
+```
+In this case, since the dependent variable is binary (0 or 1), it might not be appropriate to use a linear regression model. Linear regression may predict values outside the range [0,1] which doesn't make sense for a binary outcome. Instead, logistic regression, which predicts the log-odds of the outcome, might be more suitable.
 
 # Conclusions (10 points)
 
