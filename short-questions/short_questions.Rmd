@@ -112,24 +112,32 @@ lrt_cereal_quadratic_effects
 
 ```{r predictions for apple jacks, message=FALSE, results = FALSE}
 # Estimate new model that removes non-significant fat variable
-model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar + sodium, data = cereal)
+model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar + sodium,
+                                      data = cereal)
 
 # Create a datframe with Apple Jack data
-app_jack <- data.frame(size_g = 28, sugar_raw = 12, fat_raw = 0.5, sodium_raw = 130)
+app_jack <- data.frame(size_g = 28, 
+                       sugar_raw = 12, 
+                       fat_raw = 0.5, sodium_raw = 130)
 
 # Use the same normalization procedures as for the main dataframe
 for (col in col_trans_list) {
-  col_per <- app_jack[col] / app_jack["size_g"] # Reference column of variable devided by portion size
+  # Column of variable devided by portion size:
+  col_per <- app_jack[col] / app_jack["size_g"] 
+  
+  # Reference column of variable devided by portion size:
   ref_col <- cereal[col] / cereal["size_g"]
   app_jack[str_sub(col, 1, -5)] <- (col_per - min(ref_col)) / max(ref_col)
 }
 
 # Estimate placement of Apple Jack with a trimmed model
-aj_shelf_probs_trim <- predict(model_cereal_shelves_trim, newdata = app_jack, type = "probs")
+aj_shelf_probs_trim <- predict(model_cereal_shelves_trim, 
+                               newdata = app_jack, type = "probs")
 shelf_trim <- aj_shelf_probs_trim[which.max(aj_shelf_probs_trim)]
 
 # Estimate placement of Apple Jack with bloated model
-aj_shelf_probs <- predict(model_cereal_shelves_linear, newdata = app_jack, type = "probs")
+aj_shelf_probs <- predict(model_cereal_shelves_linear, 
+                          newdata = app_jack, type = "probs")
 shelf <- aj_shelf_probs[which.max(aj_shelf_probs)]
 ```
 
@@ -139,22 +147,32 @@ shelf <- aj_shelf_probs[which.max(aj_shelf_probs)]
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
 ```{r create figure 3.3}
+# Get mean values for static values
 fat_mean <- mean(cereal$fat)
 na_mean <- mean(cereal$sodium)
 
-df_to_plot <- data.frame(fat = rep(fat_mean, times = 100), sodium = rep(na_mean, times = 100), sugar = seq(1, 100) / 100)
-df_to_plot <- cbind(df_to_plot, predict(model_cereal_shelves_linear, newdata = df_to_plot, type = "probs"))
+# Make dataframe with values used fo inference
+df_to_plot <- data.frame(fat = rep(fat_mean, times = 100), 
+                         sodium = rep(na_mean, times = 100), 
+                         sugar = seq(1, 100) / 100)
 
+# Attach predicted values to this dataframe
+df_to_plot <- cbind(df_to_plot, 
+    predict(model_cereal_shelves_linear, newdata = df_to_plot, type = "probs"))
+
+# Plot the data 
 shelf_vs_sugar_plot <- df_to_plot %>%
   pivot_longer(cols = c(4:7), names_to = "indicators", values_to = "values") %>%
   ggplot(data = ., aes(x = sugar, y = values, colour = indicators)) +
   geom_line() +
-  theme_minimal()
+  theme_minimal() + 
+  theme(legend.position = c(0.1, 0.8)) + guides(color=guide_legend("Shelf")) + 
+  theme(axis.title.y = element_blank())
 
 shelf_vs_sugar_plot
 ```
 
-> 'Fill this in: What message does your plot give?'
+> For cereals with normalized sugar content up to approximately average, there is roughly eaula chance of finding them on 4'th and 3'd shelfs. Assuming the first shelf is at teh bottom and the 4'th is at the top,  an average health-concious adult might see them there. As the normalized sugar content approaches the higher end of the spectrum, the chances of finding this cereal on the second shelf, where a kid might see it, is growing dramatically.
 
 
 ## Odds ratios 
