@@ -103,14 +103,14 @@ lrt_cereal_quadratic_effects
 
 ```{r predictions for apple jacks}
 # Estimate new model that removes non-significant fat variable
-model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar_g_norm + sodium_mg_norm, data = cereal)
+model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar + sodium, data = cereal)
 
 # Create a datframe with Apple Jack data normalized to the same scale as the training data set
-app_jack <- data.frame(size_g = 28, sugar_g = 12, fat_g = 0.5, sodium_mg = 130)
+app_jack <- data.frame(size_g = 28, sugar_raw = 12, fat_raw = 0.5, sodium_raw = 130)
 for (col in col_trans_list) {
   col_per <- app_jack[col] / app_jack["size_g"]
   ref_col <- cereal[col] / cereal["size_g"]
-  app_jack[paste(col, "_norm", sep = "")] <- (col_per - min(ref_col)) / max(ref_col)
+  app_jack[str_sub(col, 1, -5)] <- (col_per - min(ref_col)) / max(ref_col)
 }
 
 # Estimate placement of Apple Jack
@@ -129,15 +129,15 @@ shelf
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
 ```{r create figure 3.3}
-fat_mean <- mean(cereal$fat_g_norm)
-na_mean <- mean(cereal$sodium_mg_norm)
+fat_mean <- mean(cereal$fat)
+na_mean <- mean(cereal$sodium)
 
-df_to_plot <- data.frame(fat_g_norm = rep(fat_mean, times = 100), sodium_mg_norm = rep(na_mean, times = 100), sugar_g_norm = seq(1, 100) / 100)
+df_to_plot <- data.frame(fat = rep(fat_mean, times = 100), sodium = rep(na_mean, times = 100), sugar = seq(1, 100) / 100)
 df_to_plot <- cbind(df_to_plot, predict(model_cereal_shelves_linear, newdata = df_to_plot, type = "probs"))
 
 shelf_vs_sugar_plot <- df_to_plot %>%
   pivot_longer(cols = c(4:7), names_to = "indicators", values_to = "values") %>%
-  ggplot(data = ., aes(x = sugar_g_norm, y = values, colour = indicators)) +
+  ggplot(data = ., aes(x = sugar, y = values, colour = indicators)) +
   geom_line() +
   theme_minimal()
 
