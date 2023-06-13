@@ -22,19 +22,19 @@ These questions are taken from Question 12 of chapter 3 of the textbook(Bilder a
 ```{r read cereal data, message=FALSE}
 setwd("~/source_code/W271_Lab1")
 cereal <- read_csv("./data/short-questions/cereal_dillons.csv")
+names(cereal) <- c("ID","Shelf","Cereal", "size_g","sugar_raw","fat_raw","sodium_raw")
 ```
 
 
 ## Recode Data 
 (1 point) The explanatory variables need to be reformatted before proceeding further (sample code is provided in the textbook). First, divide each explanatory variable by its serving size to account for the different serving sizes among the cereals. Second, rescale each variable to be within 0 and 1. Construct side-by-side box plots with dot plots overlaid for each of the explanatory variables. Also, construct a parallel coordinates plot for the explanatory variables and the shelf number. Discuss whether possible content differences exist among the shelves.
 
-```{r recode data}
-col_trans_list <- c("fat_g", "sugar_g", "sodium_mg")
-
+```{r recode data, warning=FALSE}
+col_trans_list <- c("fat_raw", "sugar_raw", "sodium_raw")
 
 for (col in col_trans_list) {
   col_per <- cereal[col] / cereal["size_g"]
-  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per)) / (max(col_per) - min(col_per))
+  cereal[str_sub(col, 1, -5)] <- (col_per - min(col_per)) / (max(col_per) - min(col_per))
 }
 ```
 
@@ -50,7 +50,7 @@ cereal %>%
 > 'Fill in: What do you observe in these boxplots?'
 
 ```{r parallel coordiantes plot}
-MASS::parcoord(cereal[c("Shelf", "fat_g_norm", "sodium_mg_norm", "sugar_g_norm")], col = colors()[12 * cereal$Shelf])
+MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], col = colors()[12 * cereal$Shelf])
 ```
 
 > 'Fill in: What do you observe in these parallel coordinates plots?' 
@@ -64,22 +64,23 @@ MASS::parcoord(cereal[c("Shelf", "fat_g_norm", "sodium_mg_norm", "sugar_g_norm")
 
 ```{r multinomial logit regressions}
 library(nnet)
+cereal$Shelf <- factor(cereal$Shelf, levels = c("1", "2", "3", "4"))
+
 model_cereal_shelves_linear <- multinom(
-  formula = Shelf ~ fat_g_norm +
-    sugar_g_norm +
-    sodium_mg_norm,
+  formula = Shelf ~ fat + sugar + sodium,
   data = cereal
 )
 
 
 model_cereal_shelves_quadratic <- multinom(
-  formula = Shelf ~ fat_g_norm +
-    sugar_g_norm +
-    sodium_mg_norm +
-    fat_g_norm:sugar_g_norm +
-    fat_g_norm:sodium_mg_norm +
-    sodium_mg:sugar_g_norm +
-    sodium_mg:sugar_g_norm:fat_g_norm,
+  formula = Shelf ~ fat +
+    sugar +
+    sodium +
+    fat:sugar +
+    fat:sodium +
+    sodium:sugar +
+    sodium:sugar:fat,
+  family = "multinomial",
   data = cereal
 )
 ```
