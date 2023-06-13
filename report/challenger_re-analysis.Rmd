@@ -29,6 +29,10 @@ library(mcprofile)
 library(readr)
 library(dplyr)
 library(finalfit)
+
+library(tidyverse)
+library(patchwork)
+library(MASS)
 ```
 
 # Data (20 points)
@@ -328,181 +332,74 @@ Using the parametric bootstrap, compute 90% confidence intervals separately at e
 
 In this section, you should describe your process, justify such a process, and present your results in a way that is compelling for your reader.
 
-```{r load packages for homework 2, message=FALSE}
-library(tidyverse)
-library(patchwork)
-```
 
-```{r read challenger data, message=FALSE}
-data$failure <- data$O.ring
-data$failure[data$failure > 0] <- 1
-data$failure <- factor(data$failure, levels = c(0, 1))
-
-data$Kelvin <- (459.67 + data$Temp) * 5 / 9
-```
-```{r Add a row}
-delta <- data.frame(24, 31, 200, 0, 6, 0, 273)
-names(delta) <- names(data)
-data <- rbind(data, delta)
-```
+```{r, warning = FALSE}
+# Load necessary library
 
 
-```{r Bootstrap non-parametric, warning=FALSE}
-## Non-parametric bootstrap
-intercepts <- vector()
-slopes <- vector()
-products <- vector()
-idx_seq <- seq(1,24)
-counter = 0
+# Set seed for reproducibility
+set.seed(123)
 
-for (i in 1:1000){
+# Fit the initial model to the data
+fit <- glm(O.ring ~ Temp, data = data, family = binomial)
+
+# Extract the fitted parameters
+alpha <- coef(fit)[1]
+beta <- coef(fit)[2]
+
+# Number of bootstrap resamples
+R <- 1000
+
+# Preallocate a matrix to store the bootstrap coefficients
+bootstrap_coefs <- matrix(NA, nrow = R, ncol = 2,
+                          dimnames = list(1:R, names(coef(fit))))
+
+i <- 0
+# Run the bootstrap
+while (i < R) {
+  # Generate new response values from the fitted model
+  y_star <- rbinom(n = nrow(data), size = 1, prob = plogis(alpha + beta * data$Temp))
   
-  # Generate new data 
-  new_data = data[sample(idx_seq, 24, replace = TRUE),]
+  # Fit the model to the new data
+  fit_star <- glm(y_star ~ data$Temp, family = binomial)
   
-  # Run glm on this new data 
-  model_i <- glm(formula = failure ~ Kelvin, family = binomial(), data = new_data)
-  
-  # If model converged, add coefficients to the vectors
-  if (model_i$deviance > 0.1) {
-    counter = counter + 1
-    intercepts[counter] <- model_i$coefficients[1]
-    slopes[counter] <- model_i$coefficients[2]
-    products[counter] <- model_i$coefficients[1]*model_i$coefficients[2]
+  if (fit_star$deviance >0.1) {
+  # Record the estimated parameters
+  i = i+1
+  bootstrap_coefs[i,] <- coef(fit_star)
   }
 }
 
-intercept_boot <- mean(intercepts) # bootstrap estimate of intercept
-intercept_boot
+# Compute the 90% confidence interval for alpha
+alpha_CI <- quantile(bootstrap_coefs[, "(Intercept)"], probs = c(0.05, 0.95))
 
-intercept_boot_var <- var(intercepts) # variance of intercept
-intercept_boot_var
+# Preallocate a matrix for the beta confidence intervals
+beta_CI <- matrix(NA, nrow = 91, ncol = 2, 
+                  dimnames = list(10:100, c("Lower", "Upper")))
 
-slope_boot <- mean(slopes)# bootstrap estimate of slope
-slope_boot
-
-slope_boot_var <- var(slopes) # variance of slope
-slope_boot_var
-
-covar_boot <- mean(products) - slope_boot*intercept_boot # bootstrap estimate of covariance
-covar_boot
-
-bootstrap_df <- cbind.data.frame(intercepts, slopes)
-```
-```{r graph}
-library (ggpubr)
-
-inter_polt <- ggplot(data = bootstrap_df) +
-  aes(x = intercepts) +
-  geom_histogram()
-
-slope_plot <- ggplot(data = bootstrap_df) +
-  aes(x = slopes) +
-  geom_histogram()
-
-ggarrange(inter_polt, slope_plot,
-          labels = c("Intercepts", "Slopes"),
-          ncol = 2, nrow = 1)
-```
-
-```{r Inference Bootstrap non-param}
-temps <- seq(270, 320)
-temps_f <- seq(270, 320)*1.8 - 459
-
-logit <- intercept_boot + temps*slope_boot
-odds <- exp(logit)
-boot_pi <- odds/(1+odds)
-
-logit_lower <- logit - 1.96*sqrt(intercept_boot_var + 2* covar_boot * temps + slope_boot_var*temps^2  )
-odds_lower <- exp(logit_lower)
-boot_pi_lower <- odds_lower/(1+odds_lower)
-
-logit_upper <- logit + 1.96*sqrt(intercept_boot_var + 2* covar_boot * temps + slope_boot_var*temps^2  )
-odds_upper <- exp(logit_upper)
-boot_pi_upper <- odds_upper/(1+odds_upper)
-
-infer_df = cbind.data.frame(temps_f, boot_pi, boot_pi_lower, boot_pi_upper)
-
-ggplot(data = infer_df) +
-  aes(x = temps_f, y = boot_pi) +
-  geom_line()
-```
-
-
-
-``` {r Parametric bootstrap}
-
-## Parametric bootstrap
-intercepts_param <- vector()
-slopes_param <- vector()
-products_param <- vector()
-for (i in 1:1000){ 
-    
-    intercepts_param[i] <- rnorm(1, mean = intercept_boot, sd = sd(intercepts))
-    slopes_param[i] <- rnorm(1, mean = slope_boot, sd = sd(slopes))
-    products_param[i] <- slopes_param[i] * intercepts_param[i]
-
+# Compute the 90% confidence interval for beta at each temperature
+for (temp in 10:100) {
+  # Calculate the beta values at this temperature
+  beta_at_temp <- alpha_CI + bootstrap_coefs[, "Temp"] * temp
+  # Compute the confidence interval
+  beta_CI[temp - 9,] <- quantile(beta_at_temp, probs = c(0.05, 0.95))
 }
 
-intercept_param <- mean(intercepts_param) # bootstrap estimate of intercept
-intercept_param
-
-intercept_param_var <- var(intercepts_param) # standard errors of intercept
-intercept_param_var
-
-slope_param <- mean(slopes_param)# bootstrap estimate of slope
-slope_param
-
-slope_param_var <- var(slopes_param) # standard errors of slope
-slope_param_var
-
-covar_param <- mean(products_param) - slope_param*intercept_param # bootstrap estimate of covariance
-covar_param
-
-bootstrap_param_df <- cbind.data.frame(intercept_param, slope_param)
 ```
 
-```{r Inference Bootstrap param}
-temps <- seq(270, 320)
-temps_f <- seq(270, 320)*1.8 - 459
-
-logit <- intercept_param + temps*slope_param
-odds <- exp(logit)
-boot_pi <- odds/(1+odds)
-
-logit_lower <- logit - 1.96*sqrt(intercept_param_var + 2* covar_param * temps +slope_param_var*temps^2  )
-odds_lower <- exp(logit_lower)
-boot_pi_lower <- odds_lower/(1+odds_lower)
-
-logit_upper <- logit + 1.96*sqrt(intercept_boot_var + 2* covar_param * temps + slope_param_var*temps^2  )
-odds_upper <- exp(logit_upper)
-boot_pi_upper <- odds_upper/(1+odds_upper)
-
-infer_df_param = cbind.data.frame(temps_f, boot_pi, boot_pi_lower, boot_pi_upper)
-
-ggplot(data = infer_df_param) +
-  aes(x = temps_f, y = boot_pi) +
-  geom_line()
+```{r}
+beta_CI
 ```
 
-```{r Inference Modeled, results=FALSE}
-temps <- seq(10, 100)
-modeled_pi <- vector()
-counter = 0
 
-for (Temp in temps){
-  counter = counter+1
-  modeled_pi[counter] <- predict(model_temp, newdata = data.frame(Temp), type = "response")
-  print(modeled_pi[counter])
-}
+```{r}
+# Convert log-odds to probabilities
+beta_CI_prob <- plogis(beta_CI)
 
-infer_df_model = cbind.data.frame(temps, modeled_pi)
+# Print the probability confidence intervals
+print(beta_CI_prob)
 
-ggplot(data = infer_df_model) +
-  aes(x = temps, y = modeled_pi) +
-  geom_line()
 ```
-
 
 
 ## Alternative Specification (10 points)
