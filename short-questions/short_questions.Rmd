@@ -48,13 +48,6 @@ for (col in col_trans_list) {
   col_per <- cereal[col] / cereal["size_g"]
   cereal[str_sub(col, 1, -5)] <- (col_per - min(col_per)) / max(col_per)
 }
-cereal2 <- data.frame(
-  Shelf = cereal$Shelf,
-  Cereal = cereal$Cereal,
-  sugar = stand01(x = cereal$sugar_g/cereal$size_g),
-  fat = stand01(x = cereal$fat_g/cereal$size_g),
-  sodium = stand01(x = cereal$sodium_mg/cereal$size_g)
-)
 ```
 
 ```{r boxplots}
@@ -139,13 +132,8 @@ for (col in col_trans_list) {
   
   # Reference column of variable devided by portion size:
   ref_col <- cereal[col] / cereal["size_g"]
-  app_jack[paste(col, "_norm", sep = "")] <- (col_per - min(ref_col)) / max(ref_col)
+  app_jack[str_sub(col, 1, -5)] <- (col_per - min(ref_col)) / max(ref_col)
 }
-cereal3 <- data.frame(
-  sugar = stand02(12/28, 0, 15/27),
-  fat = stand02(0.5/28, 0, 5/54),
-  sodium = stand02(130/28, 0, 300/28)
-)
 
 # Estimate placement of Apple Jack with a trimmed model
 aj_shelf_probs_trim <- predict(model_cereal_shelves_trim, 
@@ -180,7 +168,7 @@ df_to_plot <- cbind(df_to_plot,
 # Plot the data 
 shelf_vs_sugar_plot <- df_to_plot %>%
   pivot_longer(cols = c(4:7), names_to = "indicators", values_to = "values") %>%
-  ggplot(data = ., aes(x = sugar_g_norm, y = values, colour = indicators)) +
+  ggplot(data = ., aes(x = sugar, y = values, colour = indicators)) +
   geom_line() +
   theme_minimal() + 
   theme(legend.position = c(0.1, 0.8)) + guides(color=guide_legend("Shelf")) + 
@@ -189,7 +177,7 @@ shelf_vs_sugar_plot <- df_to_plot %>%
 shelf_vs_sugar_plot
 ```
 
-> For cereals with normalized sugar content up to approximately average, there is roughly eaula chance of finding them on 4'th and 3'd shelfs. Assuming the first shelf is at teh bottom and the 4'th is at the top,  an average health-concious adult might see them there. As the normalized sugar content approaches the higher end of the spectrum, the chances of finding this cereal on the second shelf, where a kid might see it, is growing dramatically.
+> For cereals with normalized sugar content up to approximately average, there is roughly eqaul chance of finding them on 4'th and 3'd shelfs. Assuming the first shelf is at teh bottom and the 4'th is at the top,  an average health-concious adult might see them there. As the normalized sugar content approaches the higher end of the spectrum, the chances of finding this cereal on the second shelf, where a kid might see it, is growing dramatically.
 
 
 ## Odds ratios 
@@ -198,17 +186,23 @@ shelf_vs_sugar_plot
 ```{r produce odds ratios}
 coefs.2 <- coef(model_cereal_shelves_linear)[1,]
 se.2 <- round(summary(model_cereal_shelves_linear)$standard.errors[1,], 2)
-ci.2 <- round(data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2)), 2)
+ci.2 <- round(data.frame(estimate = exp(coefs.2),
+                         lower = exp(coefs.2 - 1.96*se.2),
+                         upper =  exp(coefs.2 + 1.96*se.2)), 2)
 ci.2
 
 coefs.3 <- coef(model_cereal_shelves_linear)[2,]
 se.3 <- round(summary(model_cereal_shelves_linear)$standard.errors[2,], 2)
-ci.3 <- round(data.frame(estimate = exp(coefs.3), lower = exp(coefs.3 - 1.96*se.3), upper =  exp(coefs.3 + 1.96*se.3)), 2)
+ci.3 <- round(data.frame(estimate = exp(coefs.3),
+                         lower = exp(coefs.3 - 1.96*se.3),
+                         upper =  exp(coefs.3 + 1.96*se.3)), 2)
 ci.3
 
 coefs.4 <- coef(model_cereal_shelves_linear)[3,]
 se.4 <- round(summary(model_cereal_shelves_linear)$standard.errors[3,], 2)
-ci.4 <- round(data.frame(estimate = exp(coefs.4), lower = exp(coefs.4 - 1.96*se.4), upper =  exp(coefs.4 + 1.96*se.4)), 2)
+ci.4 <- round(data.frame(estimate = exp(coefs.4),
+                         lower = exp(coefs.4 - 1.96*se.4),
+                         upper =  exp(coefs.4 + 1.96*se.4)), 2)
 ci.4
 
 odds_ratios <- c(ci.2, ci.3, ci.4)
@@ -238,7 +232,8 @@ drinks_scaled %>%
   pivot_longer(cols = 3:13, names_to = "indicators", values_to = "values") %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
   geom_boxplot() +
-  theme_minimal() + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
+  theme_minimal() +
+  theme(axis.title.y = element_blank(), axis.title.x = element_blank())
 ```
 
 ```{r Drinking EDA 2}
@@ -254,8 +249,10 @@ neg_plot <- ggplot(
   theme_minimal() +
   theme(legend.position = c(0.4, 0.6)) +
   guides(
-    fill = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5, direction = "horizontal"),
-    colour = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5, direction = "horizontal"),
+    fill = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5,
+                        direction = "horizontal"),
+    colour = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5,
+                          direction = "horizontal"),
   ) + theme(axis.title.y = element_blank(), axis.title.x = element_blank()) + 
   xlim(0, 2)
 
@@ -267,7 +264,8 @@ pos_plot <- ggplot(
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = "none") + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
+  theme(legend.position = "none") + theme(axis.title.y = element_blank(),
+                                          axis.title.x = element_blank())
 
 tot_plot <- ggplot(
   data = drinks,
@@ -277,7 +275,8 @@ tot_plot <- ggplot(
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = "none") + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
+  theme(legend.position = "none") + theme(axis.title.y = element_blank(),
+                                          axis.title.x = element_blank())
 
 sest_plot <- ggplot(
   data = drinks,
@@ -287,10 +286,13 @@ sest_plot <- ggplot(
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = "none") + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
+  theme(legend.position = "none") + theme(axis.title.y = element_blank(),
+                                          axis.title.x = element_blank())
 
 ggarrange(NULL, NULL, neg_plot, pos_plot, NULL, NULL, tot_plot, sest_plot,
-  labels = c("", "", "Negative romance", "Positive romance", "", "", "Total drinks", "Self-esteem"),
+  labels = c("", "", 
+             "Negative romance", "Positive romance",
+             "", "", "Total drinks", "Self-esteem"),
   ncol = 2, nrow = 4, heights = c(0.1, 1, 0.1, 1)
 )
 ```
@@ -304,19 +306,27 @@ stargazer(as.data.frame(drinks), header = FALSE, type = "latex")
 (2 points) The researchers hypothesize that negative interactions with romantic partners would be associated with alcohol consumption and an increased desire to drink. Using appropriate models, evaluate the evidence that negative relationship interactions are associated with higher alcohol consumption and an increased desire to drink. 
 
 ```{r Poisson}
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek == "6"))
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel,
+                              family = poisson,
+                              data = filter(drinks, dayweek == "6"))
 summary(model_neg_rel_saturday)
 
-model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek == "2"))
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel,
+                             family = poisson,
+                             data = filter(drinks, dayweek == "2"))
 summary(model_neg_rel_tuesday)
 
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek == "6"))
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel,
+                              family = poisson,
+                              data = filter(drinks, dayweek == "6"))
 summary(model_neg_rel_saturday)
 
-model_des_tuesday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek == "2"))
+model_des_tuesday <- lm(formula = as.numeric(desired) ~ nrel,
+                        data = filter(drinks, dayweek == "2"))
 summary(model_des_tuesday)
 
-model_des_saturday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek == "6"))
+model_des_saturday <- lm(formula = as.numeric(desired) ~ nrel,
+                         data = filter(drinks, dayweek == "6"))
 summary(model_des_saturday)
 ```
 > 'Fill this in: What do you learn?' 
@@ -325,9 +335,14 @@ summary(model_des_saturday)
 (1 point) The researchers hypothesize that the relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem. Conduct an analysis to address this hypothesis.
 
 ```{r Self-Esteem}
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek == "6"))
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn
+                              + rosn:nrel, family = poisson,
+                              data = filter(drinks, dayweek == "6"))
+
 summary(model_neg_rel_saturday)
 
-model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek == "2"))
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn
+                             + rosn:nrel, family = poisson,
+                             data = filter(drinks, dayweek == "2"))
 summary(model_neg_rel_tuesday)
 ```
