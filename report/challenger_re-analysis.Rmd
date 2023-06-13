@@ -341,22 +341,175 @@ library(patchwork)
 ```
 
 ```{r read challenger data, message=FALSE}
-setwd("~/source_code/W271_Lab1")
-oring_df <- read_csv("./data/raw/challenger.csv")
-oring_df$failure <- oring_df$O.ring
-oring_df$failure[oring_df$failure > 0] <- 1
-oring_df$failure <- factor(oring_df$failure, levels = c(0, 1))
+data$failure <- data$O.ring
+data$failure[data$failure > 0] <- 1
+data$failure <- factor(data$failure, levels = c(0, 1))
 
-oring_df$Kelvin <- (459.67 + oring_df$Temp) * 5 / 9
+data$Kelvin <- (459.67 + data$Temp) * 5 / 9
 ```
 ```{r Add a row}
 delta <- data.frame(24, 31, 200, 0, 6, 0, 273)
-names(delta) <- names(oring_df)
-oring_df <- rbind(oring_df, delta)
+names(delta) <- names(data)
+data <- rbind(data, delta)
 ```
 
-```{r}
 
+```{r Bootstrap non-parametric, warning=FALSE}
+## Non-parametric bootstrap
+intercepts <- vector()
+slopes <- vector()
+products <- vector()
+idx_seq <- seq(1,24)
+counter = 0
+
+for (i in 1:1000){
+  
+  # Generate new data 
+  new_data = data[sample(idx_seq, 24, replace = TRUE),]
+  
+  # Run glm on this new data 
+  model_i <- glm(formula = failure ~ Kelvin, family = binomial(), data = new_data)
+  
+  # If model converged, add coefficients to the vectors
+  if (model_i$deviance > 0.1) {
+    counter = counter + 1
+    intercepts[counter] <- model_i$coefficients[1]
+    slopes[counter] <- model_i$coefficients[2]
+    products[counter] <- model_i$coefficients[1]*model_i$coefficients[2]
+  }
+}
+
+intercept_boot <- mean(intercepts) # bootstrap estimate of intercept
+intercept_boot
+
+intercept_boot_var <- var(intercepts) # variance of intercept
+intercept_boot_var
+
+slope_boot <- mean(slopes)# bootstrap estimate of slope
+slope_boot
+
+slope_boot_var <- var(slopes) # variance of slope
+slope_boot_var
+
+covar_boot <- mean(products) - slope_boot*intercept_boot # bootstrap estimate of covariance
+covar_boot
+
+bootstrap_df <- cbind.data.frame(intercepts, slopes)
+```
+```{r graph}
+library (ggpubr)
+
+inter_polt <- ggplot(data = bootstrap_df) +
+  aes(x = intercepts) +
+  geom_histogram()
+
+slope_plot <- ggplot(data = bootstrap_df) +
+  aes(x = slopes) +
+  geom_histogram()
+
+ggarrange(inter_polt, slope_plot,
+          labels = c("Intercepts", "Slopes"),
+          ncol = 2, nrow = 1)
+```
+
+```{r Inference Bootstrap non-param}
+temps <- seq(270, 320)
+temps_f <- seq(270, 320)*1.8 - 459
+
+logit <- intercept_boot + temps*slope_boot
+odds <- exp(logit)
+boot_pi <- odds/(1+odds)
+
+logit_lower <- logit - 1.96*sqrt(intercept_boot_var + 2* covar_boot * temps + slope_boot_var*temps^2  )
+odds_lower <- exp(logit_lower)
+boot_pi_lower <- odds_lower/(1+odds_lower)
+
+logit_upper <- logit + 1.96*sqrt(intercept_boot_var + 2* covar_boot * temps + slope_boot_var*temps^2  )
+odds_upper <- exp(logit_upper)
+boot_pi_upper <- odds_upper/(1+odds_upper)
+
+infer_df = cbind.data.frame(temps_f, boot_pi, boot_pi_lower, boot_pi_upper)
+
+ggplot(data = infer_df) +
+  aes(x = temps_f, y = boot_pi) +
+  geom_line()
+```
+
+
+
+``` {r Parametric bootstrap}
+
+## Parametric bootstrap
+intercepts_param <- vector()
+slopes_param <- vector()
+products_param <- vector()
+for (i in 1:1000){ 
+    
+    intercepts_param[i] <- rnorm(1, mean = intercept_boot, sd = sd(intercepts))
+    slopes_param[i] <- rnorm(1, mean = slope_boot, sd = sd(slopes))
+    products_param[i] <- slopes_param[i] * intercepts_param[i]
+
+}
+
+intercept_param <- mean(intercepts_param) # bootstrap estimate of intercept
+intercept_param
+
+intercept_param_var <- var(intercepts_param) # standard errors of intercept
+intercept_param_var
+
+slope_param <- mean(slopes_param)# bootstrap estimate of slope
+slope_param
+
+slope_param_var <- var(slopes_param) # standard errors of slope
+slope_param_var
+
+covar_param <- mean(products_param) - slope_param*intercept_param # bootstrap estimate of covariance
+covar_param
+
+bootstrap_param_df <- cbind.data.frame(intercept_param, slope_param)
+```
+
+```{r Inference Bootstrap param}
+temps <- seq(270, 320)
+temps_f <- seq(270, 320)*1.8 - 459
+
+logit <- intercept_param + temps*slope_param
+odds <- exp(logit)
+boot_pi <- odds/(1+odds)
+
+logit_lower <- logit - 1.96*sqrt(intercept_param_var + 2* covar_param * temps +slope_param_var*temps^2  )
+odds_lower <- exp(logit_lower)
+boot_pi_lower <- odds_lower/(1+odds_lower)
+
+logit_upper <- logit + 1.96*sqrt(intercept_boot_var + 2* covar_param * temps + slope_param_var*temps^2  )
+odds_upper <- exp(logit_upper)
+boot_pi_upper <- odds_upper/(1+odds_upper)
+
+infer_df_param = cbind.data.frame(temps_f, boot_pi, boot_pi_lower, boot_pi_upper)
+
+ggplot(data = infer_df_param) +
+  aes(x = temps_f, y = boot_pi) +
+  geom_line()
+```
+
+```{r Inference Modeled}
+temps <- seq(270, 320)
+modeled_pi <- vector()
+counter = 0
+
+for (temp in 270: 320){
+  counter = counter+1
+  Kelvin <- temp
+  print(Kelvin)
+  modeled_pi[counter] <- predict(model_zero, newdata = data.frame(Kelvin), type = "response")
+  print(modeled_pi[counter])
+}
+
+infer_df_model = cbind.data.frame(temps, modeled_pi)
+
+ggplot(data = infer_df_model) +
+  aes(x = temps, y = modeled_pi) +
+  geom_line()
 ```
 
 
