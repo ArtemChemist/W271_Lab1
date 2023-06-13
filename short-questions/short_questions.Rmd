@@ -23,7 +23,8 @@ These questions are taken from Question 12 of chapter 3 of the textbook(Bilder a
 cereal <- read_csv("../data/short-questions/cereal_dillons.csv")
 
 # Rename raw data columns to keep final names short
-names(cereal) <- c("ID", "Shelf", "Cereal", "size_g", "sugar_raw", "fat_raw", "sodium_raw")
+names(cereal) <- c("ID", "Shelf", "Cereal", "size_g", 
+                   "sugar_raw", "fat_raw", "sodium_raw")
 ```
 
 
@@ -47,13 +48,15 @@ cereal %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
   geom_boxplot() +
   geom_jitter(width = 0.125) +
-  theme_minimal() + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+  theme_minimal() + 
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
 ```
 
 > Most boxes of cereal contain higher sugar and sodium content than fat content. The median sodium and sugar content for these boxes of cereal is slightly above 0.50, whereas the median fat content is only near 0.37. the sugar content has higher variance than the sodium content.
 
 ```{r parallel coordiantes plot}
-MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], col = colors()[12 * cereal$Shelf])
+MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], 
+         col = colors()[12 * cereal$Shelf])
 ```
 
 > The distribution of fat, sugar, and sodium content is not uniform among all shelves. Cereal boxes on certain shelves have different distribution of fat, sugar, and sodium content than those on other shelves.
@@ -63,45 +66,44 @@ MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], col = colors()[12 *
 ## Evaluate Ordinal vs. Categorical 
 (1 point) The response has values of $1, 2, 3,$ and $4$. Explain under what setting would it be desirable to take into account ordinality, and whether you think that this setting occurs here. Then estimate a suitable multinomial regression model with linear forms of the sugar, fat, and sodium variables. Perform LRTs to examine the importance of each explanatory variable. Show that there are no significant interactions among the explanatory variables (including an interaction among all three variables).
 
-> Fill in: What do you think about ordinal data?' 
+> It makes most sense to use Shelf as a categorical variable. While there is natural order to shelves, it is likely irrelevant to the price setting. Prime shelves are in the middle of the rack and supermarkets often stock those shelves with the most popular ites. Therefore, desirability scale might differ from the physcial scale. In this situation we belive using thsi variable as categorical makes most sense. 
 
-```{r multinomial logit regressions}
+```{r multinomial logit regressions, message=FALSE}
 library(nnet)
+# Set Shelf as a categorical value
 cereal$Shelf <- factor(cereal$Shelf, levels = c("1", "2", "3", "4"))
 
+# Estimate linear model
 model_cereal_shelves_linear <- multinom(
   formula = Shelf ~ fat + sugar + sodium,
   data = cereal
 )
 
-
+# Estimate linear model with all interactions
 model_cereal_shelves_quadratic <- multinom(
-  formula = Shelf ~ fat +
-    sugar +
-    sodium +
-    fat:sugar +
-    fat:sodium +
-    sodium:sugar +
+  formula = Shelf ~ fat + sugar + sodium +
+    fat:sugar + fat:sodium + sodium:sugar +
     sodium:sugar:fat,
-  family = "multinomial",
   data = cereal
 )
 ```
 
 ```{r likelihood ratio tests: main effects}
 library(car)
+# Conduct Anova test on linear model
 lrt_cereal_main_effects <- car::Anova(model_cereal_shelves_linear)
 lrt_cereal_main_effects
 ```
 
 ```{r likelihood ratio tests: interaction effects} 
+# Conduct Anova test on the interactions
 lrt_cereal_quadratic_effects <- car::Anova(model_cereal_shelves_quadratic)
 lrt_cereal_quadratic_effects
 ```
+> The LRT test for linear response variables shows strong statistical significance for sugar and sodium content (p-values of `r lrt_cereal_main_effects$"Pr(>Chisq)"[2]` and `r lrt_cereal_main_effects$"Pr(>Chisq)"[3]` respectievely) but fails to show even weak significance of fat content (p-value of `r round(lrt_cereal_main_effects$"Pr(>Chisq)"[1], digits = 4)`)
 
-> 'Fill in: Write about what you learn as a result of these tests, using inline code evaluation.'
-The LRT test for linear response variable does not show any statistically significant variables. Since the p-value for all tested variables is greater than 0.05, we fail to reject the null hypothesis.
-However, when we include interaction terms for interaction effect testing, we see that sodium itself, along with fat times sugar, do have statistical significance because the p-value is less than 0.05.
+> The LRT test for the interactions further revealed that no two-way or three way interaction achieved statistical significance
+
 
 ## Where do you think Apple Jacks will be placed? 
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
@@ -110,10 +112,12 @@ However, when we include interaction terms for interaction effect testing, we se
 # Estimate new model that removes non-significant fat variable
 model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar + sodium, data = cereal)
 
-# Create a datframe with Apple Jack data normalized to the same scale as the training data set
+# Create a datframe with Apple Jack data
 app_jack <- data.frame(size_g = 28, sugar_raw = 12, fat_raw = 0.5, sodium_raw = 130)
+
+# Use the same normalization procedures as for the main dataframe
 for (col in col_trans_list) {
-  col_per <- app_jack[col] / app_jack["size_g"]
+  col_per <- app_jack[col] / app_jack["size_g"] # Reference column of variable devided by portion size
   ref_col <- cereal[col] / cereal["size_g"]
   app_jack[str_sub(col, 1, -5)] <- (col_per - min(ref_col)) / max(ref_col)
 }
