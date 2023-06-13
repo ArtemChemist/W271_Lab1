@@ -340,14 +340,20 @@ R <- 1000
 bootstrap_coefs <- matrix(NA, nrow = R, ncol = 2,
                           dimnames = list(1:R, names(coef(fit))))
 
+i <- 0
 # Run the bootstrap
-for (i in 1:R) {
+while (i < R) {
   # Generate new response values from the fitted model
   y_star <- rbinom(n = nrow(data), size = 1, prob = plogis(alpha + beta * data$Temp))
+  
   # Fit the model to the new data
   fit_star <- glm(y_star ~ data$Temp, family = binomial)
+  
+  if (fit_star$deviance >0.1) {
   # Record the estimated parameters
+  i = i+1
   bootstrap_coefs[i,] <- coef(fit_star)
+  }
 }
 
 # Compute the 90% confidence interval for alpha
