@@ -16,9 +16,13 @@ library(nnet)
 library(car)
 library(ggpubr)
 library(stargazer)
+library(GGally)
+library(nnet)
+library(car)
 ```
 
 # Strategic Placement of Products in Grocery Stores (5 points)
+
 These questions are taken from Question 12 of chapter 3 of the textbook(Bilder and Loughin’s “Analysis of Categorical Data with R.
 
 > *In order to maximize sales, items within grocery stores are strategically placed to draw customer attention. This exercise examines one type of item—breakfast cereal. Typically, in large grocery stores, boxes of cereal are placed on sets of shelves located on one side of the aisle. By placing particular boxes of cereals on specific shelves, grocery stores may better attract customers to them. To investigate this further, a random sample of size 10 was taken from each of four shelves at a Dillons grocery store in Manhattan, KS. These data are given in the *cereal_dillons.csv *file. The response variable is the shelf number, which is numbered from bottom (1) to top (4), and the explanatory variables are the sugar, fat, and sodium content of the cereals.*
@@ -44,6 +48,13 @@ for (col in col_trans_list) {
   col_per <- cereal[col] / cereal["size_g"]
   cereal[str_sub(col, 1, -5)] <- (col_per - min(col_per)) / max(col_per)
 }
+cereal2 <- data.frame(
+  Shelf = cereal$Shelf,
+  Cereal = cereal$Cereal,
+  sugar = stand01(x = cereal$sugar_g/cereal$size_g),
+  fat = stand01(x = cereal$fat_g/cereal$size_g),
+  sodium = stand01(x = cereal$sodium_mg/cereal$size_g)
+)
 ```
 
 ```{r boxplots}
@@ -56,21 +67,21 @@ cereal %>%
   theme(axis.title.x = element_blank(), axis.title.y = element_blank())
 ```
 
-> Most boxes of cereal contain higher sugar and sodium content than fat content. The median sodium and sugar content for these boxes of cereal is slightly above 0.50, whereas the median fat content is only near 0.37. the sugar content has higher variance than the sodium content.
+> It appears that the items that are higher in sodium tend to be on shelf #1. Items that are high in sugar tend to go on shelf #2. For fat, there does not appear to be any obvious trends of which shelf items that are high or low in fat go to.
 
 ```{r parallel coordiantes plot}
 MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], 
          col = colors()[12 * cereal$Shelf])
 ```
 
-> The distribution of fat, sugar, and sodium content is not uniform among all shelves. Cereal boxes on certain shelves have different distribution of fat, sugar, and sodium content than those on other shelves.
+> The parallel coordinates plot is harder to glean information from than the box plots. When looking closely one can find much of the same information that was found in the box plots. Namely, the highest sugar items belonging to shelf #2 and the high sodium items being found in shelf #1.
 
-> Content differences do exist between the shelves. Cereal boxes on the top shelf tend to have fat, sodium, and sugar content close to the median. The variance of fat, sodium, and sugar content on the top shelf appears to be lower than that of ceral boxes on other shelves. Cereal boxes on the bottom shelf appear to have the highest sodium content. The location of cereal boxes appears to have an effect on the sodium content of cereal boxes.
+> Without running an regression it is not responsible to say definitively whether or not a content different exists between the shelves. Based on these graphs there doesn't seem to be too big of a relationship between sugar, fat, and sodium and the shelf a cereal belongs to.
 
 ## Evaluate Ordinal vs. Categorical 
 (1 point) The response has values of $1, 2, 3,$ and $4$. Explain under what setting would it be desirable to take into account ordinality, and whether you think that this setting occurs here. Then estimate a suitable multinomial regression model with linear forms of the sugar, fat, and sodium variables. Perform LRTs to examine the importance of each explanatory variable. Show that there are no significant interactions among the explanatory variables (including an interaction among all three variables).
 
-> It makes most sense to use Shelf as a categorical variable. While there is natural order to shelves, it is likely irrelevant to the price setting. Prime shelves are in the middle of the rack and supermarkets often stock those shelves with the most popular ites. Therefore, desirability scale might differ from the physcial scale. In this situation we belive using thsi variable as categorical makes most sense. 
+> Ordinal data would make sense in the case where there's a natural ordering to the shelves. Such as if higher shelves were inherently more desirable than lower shelves. Then it would be expected that better selling products be placed on higher shelves. It doesn't appear as if this is the case here as the most desirable shelves would likely be at eye level (towards the middle) and there doesn't appear to be any other sort of ordering at play.
 
 ```{r multinomial logit regressions, message=FALSE, results = FALSE}
 # Set Shelf as a categorical value
@@ -106,6 +117,7 @@ lrt_cereal_quadratic_effects
 
 > The LRT test for the interactions further revealed that no two-way or three way interaction achieved statistical significance
 
+> Similar to what the graphs show there is clearly an obvious relationship between sugar, sodium, and shelf placement. The Anova test shows that none of the interaction terms are significant as well as the linear fat variable.
 
 ## Where do you think Apple Jacks will be placed? 
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
@@ -129,6 +141,11 @@ for (col in col_trans_list) {
   ref_col <- cereal[col] / cereal["size_g"]
   app_jack[paste(col, "_norm", sep = "")] <- (col_per - min(ref_col)) / max(ref_col)
 }
+cereal3 <- data.frame(
+  sugar = stand02(12/28, 0, 15/27),
+  fat = stand02(0.5/28, 0, 5/54),
+  sodium = stand02(130/28, 0, 300/28)
+)
 
 # Estimate placement of Apple Jack with a trimmed model
 aj_shelf_probs_trim <- predict(model_cereal_shelves_trim, 
@@ -179,10 +196,25 @@ shelf_vs_sugar_plot
 (1 point) Estimate odds ratios and calculate corresponding confidence intervals for each explanatory variable. Relate your interpretations back to the plots constructed for this exercise. 
 
 ```{r produce odds ratios}
-odds_ratios <- "fill this in"
+coefs.2 <- coef(model_cereal_shelves_linear)[1,]
+se.2 <- round(summary(model_cereal_shelves_linear)$standard.errors[1,], 2)
+ci.2 <- round(data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2)), 2)
+ci.2
+
+coefs.3 <- coef(model_cereal_shelves_linear)[2,]
+se.3 <- round(summary(model_cereal_shelves_linear)$standard.errors[2,], 2)
+ci.3 <- round(data.frame(estimate = exp(coefs.3), lower = exp(coefs.3 - 1.96*se.3), upper =  exp(coefs.3 + 1.96*se.3)), 2)
+ci.3
+
+coefs.4 <- coef(model_cereal_shelves_linear)[3,]
+se.4 <- round(summary(model_cereal_shelves_linear)$standard.errors[3,], 2)
+ci.4 <- round(data.frame(estimate = exp(coefs.4), lower = exp(coefs.4 - 1.96*se.4), upper =  exp(coefs.4 + 1.96*se.4)), 2)
+ci.4
+
+odds_ratios <- c(ci.2, ci.3, ci.4)
 ```
 
-> 'Fill this in: What do you learn about each of these variables?' 
+> One can see that the estimate and corresponding interval for shelf 2's parameters indicate that the odds increase substantially as `fat` and `sugar` increase. It is also seen that the odds increase very slowly for shelves 2-4 as `sodium` increases showing that shelf 1 is the most probable shelf when sodium is high. Lastly, the confidence intervals are fairly wide which is a result of the weak correlation between the variables and shelf number as well as the limited number of samples.
 
 
 # Alcohol, self-esteem and negative relationship interactions (5 points)
@@ -194,8 +226,7 @@ The researchers stated the following hypothesis:
 > *We hypothesized that negative interactions with romantic partners would be associated with alcohol consumption (and an increased desire to drink). We predicted that people with low trait self-esteem would drink more on days they experienced more negative relationship interactions compared with days during which they experienced fewer negative relationship interactions. The relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem.*
 
 ```{r read drinking data, message=FALSE}
-drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
-drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
+drinks <- read_csv('../data/short-questions/DeHartSimplified.csv')
 ```
 
 ## EDA 
