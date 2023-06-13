@@ -20,21 +20,19 @@ These questions are taken from Question 12 of chapter 3 of the textbook(Bilder a
 > *In order to maximize sales, items within grocery stores are strategically placed to draw customer attention. This exercise examines one type of item—breakfast cereal. Typically, in large grocery stores, boxes of cereal are placed on sets of shelves located on one side of the aisle. By placing particular boxes of cereals on specific shelves, grocery stores may better attract customers to them. To investigate this further, a random sample of size 10 was taken from each of four shelves at a Dillons grocery store in Manhattan, KS. These data are given in the *cereal_dillons.csv *file. The response variable is the shelf number, which is numbered from bottom (1) to top (4), and the explanatory variables are the sugar, fat, and sodium content of the cereals.*
 
 ```{r read cereal data, message=FALSE}
-setwd("~/source_code/W271_Lab1")
 cereal <- read_csv("./data/short-questions/cereal_dillons.csv")
-names(cereal) <- c("ID","Shelf","Cereal", "size_g","sugar_raw","fat_raw","sodium_raw")
+names(cereal) <- c("ID", "Shelf", "Cereal", "size_g", "sugar_raw", "fat_raw", "sodium_raw")
 ```
 
 
 ## Recode Data 
 (1 point) The explanatory variables need to be reformatted before proceeding further (sample code is provided in the textbook). First, divide each explanatory variable by its serving size to account for the different serving sizes among the cereals. Second, rescale each variable to be within 0 and 1. Construct side-by-side box plots with dot plots overlaid for each of the explanatory variables. Also, construct a parallel coordinates plot for the explanatory variables and the shelf number. Discuss whether possible content differences exist among the shelves.
 
-```{r recode data, warning=FALSE}
-col_trans_list <- c("fat_raw", "sugar_raw", "sodium_raw")
-
+```{r recode data}
+col_trans_list <- c("fat_g", "sugar_g", "sodium_mg")
 for (col in col_trans_list) {
   col_per <- cereal[col] / cereal["size_g"]
-  cereal[str_sub(col, 1, -5)] <- (col_per - min(col_per)) / (max(col_per) - min(col_per))
+  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per)) / max(col_per)
 }
 ```
 
@@ -48,14 +46,17 @@ cereal %>%
 ```
 
 > 'Fill in: What do you observe in these boxplots?'
+Most boxes of cereal contain higher sugar and sodium content than fat content. The median sodium and sugar content for these boxes of cereal is slightly above 0.50, whereas the median fat content is only near 0.37. the sugar content has higher variance than the sodium content.
 
 ```{r parallel coordiantes plot}
 MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], col = colors()[12 * cereal$Shelf])
 ```
 
 > 'Fill in: What do you observe in these parallel coordinates plots?' 
+The distribution of fat, sugar, and sodium content is not uniform among all shelves. Cereal boxes on certain shelves have different distribution of fat, sugar, and sodium content than those on other shelves.
 
 > Fill in: Do content differences exist between the shelves?'
+Content differences do exist between the shelves. Cereal boxes on the top shelf tend to have fat, sodium, and sugar content close to the median. The variance of fat, sodium, and sugar content on the top shelf appears to be lower than that of ceral boxes on other shelves. Cereal boxes on the bottom shelf appear to have the highest sodium content. The location of cereal boxes appears to have an effect on the sodium content of cereal boxes.
 
 ## Evaluate Ordinal vs. Categorical 
 (1 point) The response has values of $1, 2, 3,$ and $4$. Explain under what setting would it be desirable to take into account ordinality, and whether you think that this setting occurs here. Then estimate a suitable multinomial regression model with linear forms of the sugar, fat, and sodium variables. Perform LRTs to examine the importance of each explanatory variable. Show that there are no significant interactions among the explanatory variables (including an interaction among all three variables).
@@ -97,6 +98,8 @@ lrt_cereal_quadratic_effects
 ```
 
 > 'Fill in: Write about what you learn as a result of these tests, using inline code evaluation.'
+The LRT test for linear response variable does not show any statistically significant variables. Since the p-value for all tested variables is greater than 0.05, we fail to reject the null hypothesis.
+However, when we include interaction terms for interaction effect testing, we see that sodium itself, along with fat times sugar, do have statistical significance because the p-value is less than 0.05.
 
 ## Where do you think Apple Jacks will be placed? 
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
@@ -124,6 +127,7 @@ shelf
 ```
 
 > 'Fill this in: Where does your model predict apple jacks will be placed?'
+The model shows 0.40, which means that Appl jacks will be placed on shelf 1.
 
 ## Figure 3.3 
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
@@ -146,6 +150,7 @@ shelf_vs_sugar_plot
 
 > 'Fill this in: What message does your plot give?'
 
+
 ## Odds ratios 
 (1 point) Estimate odds ratios and calculate corresponding confidence intervals for each explanatory variable. Relate your interpretations back to the plots constructed for this exercise. 
 
@@ -166,6 +171,7 @@ The researchers stated the following hypothesis:
 
 ```{r read drinking data, message=FALSE}
 drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
+drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
 ```
 
 ## EDA 
@@ -173,7 +179,7 @@ drinks <- read_csv("../data/short-questions/DeHartSimplified.csv")
 
 ```{r drinking EDA 1}
 drinks_scaled <- as.data.frame(scale(drinks))
-drinks_scaled%>%
+drinks_scaled %>%
   pivot_longer(cols = 3:13, names_to = "indicators", values_to = "values") %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
   geom_boxplot() +
@@ -182,54 +188,75 @@ drinks_scaled%>%
 
 ```{r Drinking EDA 2}
 library(ggpubr)
-neg_plot <- ggplot(data = drinks,
-                   aes(x = nrel,
-                       fill = as.factor(dayweek),
-                       colour = as.factor(dayweek))
-                       ) +
-            geom_density(alpha = 0.2) +
-            theme_minimal() +
-            theme(legend.position = c(0.15, 0.8)) +
-            guides(fill = guide_legend(title = "Neg romantic event"),
-                   colour = guide_legend(title = "Neg romantic event")) +
-              xlim(0, 2)
+neg_plot <- ggplot(
+  data = drinks,
+  aes(
+    x = nrel,
+    fill = as.factor(dayweek),
+    colour = as.factor(dayweek)
+  )
+) +
+  geom_density(alpha = 0.2) +
+  theme_minimal() +
+  theme(legend.position = c(0.15, 0.8)) +
+  guides(
+    fill = guide_legend(title = "Neg romantic event"),
+    colour = guide_legend(title = "Neg romantic event")
+  ) +
+  xlim(0, 2)
 
-pos_plot <- ggplot(data = drinks,
-                   aes(x = prel,
-                       fill = as.factor(dayweek),
-                       colour = as.factor(dayweek))
-                       ) +
-            geom_density(alpha = 0.2) +
-            theme_minimal() +
-            theme(legend.position = c(0.15, 0.8)) +
-            guides(fill = guide_legend(title = "Pos romantic event"),
-                   colour = guide_legend(title = "Pos romantic event"))
+pos_plot <- ggplot(
+  data = drinks,
+  aes(
+    x = prel,
+    fill = as.factor(dayweek),
+    colour = as.factor(dayweek)
+  )
+) +
+  geom_density(alpha = 0.2) +
+  theme_minimal() +
+  theme(legend.position = c(0.15, 0.8)) +
+  guides(
+    fill = guide_legend(title = "Pos romantic event"),
+    colour = guide_legend(title = "Pos romantic event")
+  )
 
-tot_plot <- ggplot(data = drinks,
-                   aes(x = numall,
-                       fill = as.factor(dayweek),
-                       colour = as.factor(dayweek))
-                       ) +
-            geom_density(alpha = 0.2) +
-            theme_minimal() +
-            theme(legend.position = c(0.15, 0.8)) +
-            guides(fill = guide_legend(title = "Total drinks"),
-                   colour = guide_legend(title = "Total drinks"))
+tot_plot <- ggplot(
+  data = drinks,
+  aes(
+    x = numall,
+    fill = as.factor(dayweek),
+    colour = as.factor(dayweek)
+  )
+) +
+  geom_density(alpha = 0.2) +
+  theme_minimal() +
+  theme(legend.position = c(0.15, 0.8)) +
+  guides(
+    fill = guide_legend(title = "Total drinks"),
+    colour = guide_legend(title = "Total drinks")
+  )
 
-sest_plot <- ggplot(data = drinks,
-                   aes(x = desired,
-                       fill = as.factor(dayweek),
-                       colour = as.factor(dayweek))
-                       ) +
-            geom_density(alpha = 0.2) +
-            theme_minimal() +
-            theme(legend.position = c(0.15, 0.8)) +
-            guides(fill = guide_legend(title = "Desire"),
-                   colour = guide_legend(title = "Desire"))
+sest_plot <- ggplot(
+  data = drinks,
+  aes(
+    x = desired,
+    fill = as.factor(dayweek),
+    colour = as.factor(dayweek)
+  )
+) +
+  geom_density(alpha = 0.2) +
+  theme_minimal() +
+  theme(legend.position = c(0.15, 0.8)) +
+  guides(
+    fill = guide_legend(title = "Desire"),
+    colour = guide_legend(title = "Desire")
+  )
 
 ggarrange(NULL, NULL, neg_plot, pos_plot, NULL, NULL, tot_plot, sest_plot,
-          labels = c("Neg", "Pos", "", "", "Tot", "Desire", "", ""),
-          ncol = 2, nrow = 4, heights = c(0.1, 1, 0.1, 1))
+  labels = c("Neg", "Pos", "", "", "Tot", "Desire", "", ""),
+  ncol = 2, nrow = 4, heights = c(0.1, 1, 0.1, 1)
+)
 ```
 
 ```{r Drinking EDA 3, results='asis'}
@@ -242,19 +269,19 @@ stargazer(as.data.frame(drinks), header = FALSE, type = "latex")
 (2 points) The researchers hypothesize that negative interactions with romantic partners would be associated with alcohol consumption and an increased desire to drink. Using appropriate models, evaluate the evidence that negative relationship interactions are associated with higher alcohol consumption and an increased desire to drink. 
 
 ```{r Poisson}
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek =='6'))
-summary(model_neg_rel_saturday )
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek == "6"))
+summary(model_neg_rel_saturday)
 
-model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek =='2'))
-summary(model_neg_rel_tuesday )
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek == "2"))
+summary(model_neg_rel_tuesday)
 
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek =='6'))
-summary(model_neg_rel_saturday )
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel, family = poisson, data = filter(drinks, dayweek == "6"))
+summary(model_neg_rel_saturday)
 
-model_des_tuesday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek =='2'))
+model_des_tuesday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek == "2"))
 summary(model_des_tuesday)
 
-model_des_saturday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek =='6'))
+model_des_saturday <- lm(formula = as.numeric(desired) ~ nrel, data = filter(drinks, dayweek == "6"))
 summary(model_des_saturday)
 ```
 > 'Fill this in: What do you learn?' 
@@ -263,9 +290,9 @@ summary(model_des_saturday)
 (1 point) The researchers hypothesize that the relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem. Conduct an analysis to address this hypothesis.
 
 ```{r Self-Esteem}
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek =='6'))
-summary(model_neg_rel_saturday )
+model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek == "6"))
+summary(model_neg_rel_saturday)
 
-model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek =='2'))
-summary(model_neg_rel_tuesday )
+model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn + rosn:nrel, family = poisson, data = filter(drinks, dayweek == "2"))
+summary(model_neg_rel_tuesday)
 ```
