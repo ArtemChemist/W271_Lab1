@@ -101,11 +101,10 @@ stand02 <- function(x, min, max){
   (x - min)/(max - min)
 }
 cereal3 <- data.frame(
-  sugar = stand02(12/28, 0, 20),
-  fat = stand02(0.5/28, 0, 5),
-  sodium = stand02(130/28, 0, 330)
+  sugar = stand02(12/28, 0, 15/27),
+  fat = stand02(0.5/28, 0, 5/54),
+  sodium = stand02(130/28, 0, 300/28)
 )
-cereal3
 
 pi.hat.1 <- predict(object = model_cereal_shelves_linear, newdata = cereal3, type = "probs")
 
@@ -119,9 +118,9 @@ aj_shelf_probs
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
 ```{r create figure 3.3}
-sugar <- stand02(seq(0, 20, by=0.1), 0, 20)
-mean_fat <- replicate(201, mean(stand01(cereal2$fat)))
-mean_sodium <- replicate(201, mean(stand01(cereal2$sodium)))
+sugar <- seq(0, 1, by=0.01)
+mean_fat <- replicate(101, mean(stand01(cereal2$fat)))
+mean_sodium <- replicate(101, mean(stand01(cereal2$sodium)))
 cereal4 <- data.frame(
   sugar = sugar,
   fat = mean_fat,
@@ -129,7 +128,7 @@ cereal4 <- data.frame(
 )
 pi.hat.2 <- predict(object = model_cereal_shelves_linear, newdata = cereal4, type = "probs")
 
-plot.data <- data.frame(prediction = pi.hat.2, observed = seq(0, 20, by=0.1))
+plot.data <- data.frame(prediction = pi.hat.2, observed = seq(0, 1, by=0.01))
 shelf_vs_sugar_plot <- ggplot(plot.data, aes(x = observed)) + 
   geom_line(aes(y = prediction.1)) +
   geom_line(aes(y = prediction.2), linetype = "dashed") +
@@ -147,22 +146,24 @@ shelf_vs_sugar_plot
 
 ```{r produce odds ratios}
 coefs.2 <- coef(model_cereal_shelves_linear)[1,]
-se.2 <- summary(model_cereal_shelves_linear)$standard.errors[1,]
-ci.2 <- data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2))
+se.2 <- round(summary(model_cereal_shelves_linear)$standard.errors[1,], 2)
+ci.2 <- round(data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2)), 2)
+ci.2
 
-coefs.2 <- coef(model_cereal_shelves_linear)[1,]
-se.2 <- summary(model_cereal_shelves_linear)$standard.errors[1,]
-ci.2 <- data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2))
+coefs.3 <- coef(model_cereal_shelves_linear)[2,]
+se.3 <- round(summary(model_cereal_shelves_linear)$standard.errors[2,], 2)
+ci.3 <- round(data.frame(estimate = exp(coefs.3), lower = exp(coefs.3 - 1.96*se.3), upper =  exp(coefs.3 + 1.96*se.3)), 2)
+ci.3
 
-coefs.2 <- coef(model_cereal_shelves_linear)[1,]
-se.2 <- summary(model_cereal_shelves_linear)$standard.errors[1,]
-ci.2 <- data.frame(estimate = exp(coefs.2), lower = exp(coefs.2 - 1.96*se.2), upper =  exp(coefs.2 + 1.96*se.2))
+coefs.4 <- coef(model_cereal_shelves_linear)[3,]
+se.4 <- round(summary(model_cereal_shelves_linear)$standard.errors[3,], 2)
+ci.4 <- round(data.frame(estimate = exp(coefs.4), lower = exp(coefs.4 - 1.96*se.4), upper =  exp(coefs.4 + 1.96*se.4)), 2)
+ci.4
 
-odds_ratios <- 'fillin'
-odds_ratios
+odds_ratios <- c(ci.2, ci.3, ci.4)
 ```
 
-> 'Fill this in: What do you learn about each of these variables?' 
+> One can see that the estimate and corresponding interval for shelf 2's parameters indicate that the odds increase substantially as `fat` and `sugar` increase. It is also seen that the odds increase very slowly for shelves 2-4 as `sodium` increases showing that shelf 1 is the most probable shelf when sodium is high. Lastly, the confidence intervals are fairly wide which is a result of the weak correlation between the variables and shelf number as well as the limited number of samples.
 
 
 # Alcohol, self-esteem and negative relationship interactions (5 points)
