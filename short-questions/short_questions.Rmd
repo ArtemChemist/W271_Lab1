@@ -9,7 +9,7 @@ output:
 fontsize: 11pt
 ---
 
-```{r load packages for homework 2, message=FALSE}
+```{r load packages for homework 2, message=FALSE, warning=FALSE}
 library(tidyverse)
 library(patchwork)
 ```
@@ -20,7 +20,9 @@ These questions are taken from Question 12 of chapter 3 of the textbook(Bilder a
 > *In order to maximize sales, items within grocery stores are strategically placed to draw customer attention. This exercise examines one type of item—breakfast cereal. Typically, in large grocery stores, boxes of cereal are placed on sets of shelves located on one side of the aisle. By placing particular boxes of cereals on specific shelves, grocery stores may better attract customers to them. To investigate this further, a random sample of size 10 was taken from each of four shelves at a Dillons grocery store in Manhattan, KS. These data are given in the *cereal_dillons.csv *file. The response variable is the shelf number, which is numbered from bottom (1) to top (4), and the explanatory variables are the sugar, fat, and sodium content of the cereals.*
 
 ```{r read cereal data, message=FALSE}
-cereal <- read_csv("./data/short-questions/cereal_dillons.csv")
+cereal <- read_csv("../data/short-questions/cereal_dillons.csv")
+
+# Rename raw data columns to keep final names short
 names(cereal) <- c("ID", "Shelf", "Cereal", "size_g", "sugar_raw", "fat_raw", "sodium_raw")
 ```
 
@@ -29,10 +31,13 @@ names(cereal) <- c("ID", "Shelf", "Cereal", "size_g", "sugar_raw", "fat_raw", "s
 (1 point) The explanatory variables need to be reformatted before proceeding further (sample code is provided in the textbook). First, divide each explanatory variable by its serving size to account for the different serving sizes among the cereals. Second, rescale each variable to be within 0 and 1. Construct side-by-side box plots with dot plots overlaid for each of the explanatory variables. Also, construct a parallel coordinates plot for the explanatory variables and the shelf number. Discuss whether possible content differences exist among the shelves.
 
 ```{r recode data}
-col_trans_list <- c("fat_g", "sugar_g", "sodium_mg")
+# Rescale columns in the following list
+# Create new columns for rescaled data
+col_trans_list <- c("fat_raw", "sugar_raw", "sodium_raw") 
+
 for (col in col_trans_list) {
   col_per <- cereal[col] / cereal["size_g"]
-  cereal[paste(col, "_norm", sep = "")] <- (col_per - min(col_per)) / max(col_per)
+  cereal[str_sub(col, 1, -5)] <- (col_per - min(col_per)) / max(col_per)
 }
 ```
 
@@ -42,21 +47,18 @@ cereal %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
   geom_boxplot() +
   geom_jitter(width = 0.125) +
-  theme_minimal()
+  theme_minimal() + theme(axis.title.x = element_blank(), axis.title.y = element_blank())
 ```
 
-> 'Fill in: What do you observe in these boxplots?'
-Most boxes of cereal contain higher sugar and sodium content than fat content. The median sodium and sugar content for these boxes of cereal is slightly above 0.50, whereas the median fat content is only near 0.37. the sugar content has higher variance than the sodium content.
+> Most boxes of cereal contain higher sugar and sodium content than fat content. The median sodium and sugar content for these boxes of cereal is slightly above 0.50, whereas the median fat content is only near 0.37. the sugar content has higher variance than the sodium content.
 
 ```{r parallel coordiantes plot}
 MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], col = colors()[12 * cereal$Shelf])
 ```
 
-> 'Fill in: What do you observe in these parallel coordinates plots?' 
-The distribution of fat, sugar, and sodium content is not uniform among all shelves. Cereal boxes on certain shelves have different distribution of fat, sugar, and sodium content than those on other shelves.
+> The distribution of fat, sugar, and sodium content is not uniform among all shelves. Cereal boxes on certain shelves have different distribution of fat, sugar, and sodium content than those on other shelves.
 
-> Fill in: Do content differences exist between the shelves?'
-Content differences do exist between the shelves. Cereal boxes on the top shelf tend to have fat, sodium, and sugar content close to the median. The variance of fat, sodium, and sugar content on the top shelf appears to be lower than that of ceral boxes on other shelves. Cereal boxes on the bottom shelf appear to have the highest sodium content. The location of cereal boxes appears to have an effect on the sodium content of cereal boxes.
+> Content differences do exist between the shelves. Cereal boxes on the top shelf tend to have fat, sodium, and sugar content close to the median. The variance of fat, sodium, and sugar content on the top shelf appears to be lower than that of ceral boxes on other shelves. Cereal boxes on the bottom shelf appear to have the highest sodium content. The location of cereal boxes appears to have an effect on the sodium content of cereal boxes.
 
 ## Evaluate Ordinal vs. Categorical 
 (1 point) The response has values of $1, 2, 3,$ and $4$. Explain under what setting would it be desirable to take into account ordinality, and whether you think that this setting occurs here. Then estimate a suitable multinomial regression model with linear forms of the sugar, fat, and sodium variables. Perform LRTs to examine the importance of each explanatory variable. Show that there are no significant interactions among the explanatory variables (including an interaction among all three variables).
