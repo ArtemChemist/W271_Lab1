@@ -13,6 +13,7 @@ geometry: margin=1in
 \begin{abstract} 
 This report will, indeed, be abstract. No, instead, describe your goals your approach, and what you learn.
 \end{abstract}
+
 ```
 # Introduction
 
@@ -243,11 +244,15 @@ No matter what you determined about using or dropping `pressure`, for this secti
 
 1.  Estimate the logistic regression model.
 
-
 ```{r}
 model_temp <- glm(O.ring ~ Temp, family = binomial(link = "logit"), data = data)
 coef(model_temp)
 ```
+
+```{r}
+data
+```
+
 
 2.  Determine if a quadratic term is needed in the model for the temperature in this model.
 
@@ -264,23 +269,25 @@ Not needed.
 temp_range <- seq(31, 81, length.out = 100)
 
 prob_est <- predict(model_temp, newdata = data.frame(Temp = temp_range), type = "response")
-conf_int <- predict(model_temp, newdata = data.frame(Temp = temp_range), type = "response", se.fit = TRUE)
+conf_int <- predict(model_temp, newdata = data.frame(Temp = temp_range), type = "link", se.fit = TRUE)
 
-conf_int_up <- plogis(conf_int$fit + 1.96 * conf_int$se.fit)
-conf_int_low <- plogis(conf_int$fit - 1.96 * conf_int$se.fit)
+alpha = 0.05
+CI.pred.upper = conf_int$fit + qnorm(0.95)*conf_int$se.fit
+CI.pred.lower = conf_int$fit + qnorm(0.05)*conf_int$se.fit
+CI.pi.upper = exp(CI.pred.upper)/(1+exp(CI.pred.upper))
+CI.pi.lower = exp(CI.pred.lower)/(1+exp(CI.pred.lower))
 
-plot(temp_range, prob_est, type = "l", xlab = "Temperature", ylab = "Probability of O-ring failure", col = "red")
-lines(temp_range, conf_int_low, lty = 2, col = "blue")
-lines(temp_range, conf_int_up, lty = 2, col = "blue")
-legend("bottomright",
-  legend = c("Confidence Interval", "Fitted Model"),
-  col = c("blue", "red"),
-  pch = c(20, NA),
-  lty = c(NA, 1),
-  cex = 0.8,
-  bty = "n",
-  lwd = c(NA, 2)
-)
+plot(temp_range, prob_est, type = "l", xlab = "Temperature", ylab = "Probability of O-ring failure", col='red')
+lines(temp_range, CI.pi.upper, lty = 2, col='blue')
+lines(temp_range, CI.pi.lower, lty = 2, col='blue')
+legend("bottomright", 
+       legend = c("Confidence Interval", "Fitted Model"),  
+       col = c("blue", "red"), 
+       pch = c(20, NA),  
+       lty = c(NA, 1),  
+       cex = 0.8,  
+       bty = "n", 
+       lwd = c(NA, 2))
 ```
 
 5.  Expected number of failures vs. Temp.
@@ -300,18 +307,19 @@ Specific requirements for these plots:
 
 
 ```{r}
+
 prob_31 <- predict(model_temp, newdata = data.frame(Temp = 31), type = "response")
-conf_int_31 <- predict(model_temp, newdata = data.frame(Temp = 31), type = "response", se.fit = TRUE)
-conf_int_31_up <- plogis(conf_int_31$fit + 1.96 * conf_int_31$se.fit)
-conf_int_31_low <- plogis(conf_int_31$fit - 1.96 * conf_int_31$se.fit)
+conf_int_31 <- predict(model_temp, newdata = data.frame(Temp = 31), type = "link", se.fit = TRUE)
+CI_31.pred.upper = conf_int_31$fit + qnorm(0.95)*conf_int_31$se.fit
+CI_31.pred.lower = conf_int_31$fit + qnorm(0.05)*conf_int_31$se.fit
+CI_31.pi.upper = exp(CI_31.pred.upper)/(1+exp(CI_31.pred.upper))
+CI_31.pi.lower = exp(CI_31.pred.lower)/(1+exp(CI_31.pred.lower))
 
 prob_31
-conf_int_31_low
-conf_int_31_up
+CI_31.pi.upper
+CI_31.pi.lower
+
 ```
-
-
-
 
 ## Bootstrap Confidence Intervals (30 points)
 
@@ -348,163 +356,7 @@ oring_df <- rbind(oring_df, delta)
 ```
 
 ```{r}
-model_zero <- glm(formula = failure ~ Kelvin, family = binomial(), data = oring_df)
-summary(model_zero)
-```
 
-```{r Bootstrap non-parametric, warning=FALSE}
-## Non-parametric bootstrap
-intercepts <- vector()
-slopes <- vector()
-products <- vector()
-idx_seq <- seq(1, 24)
-counter <- 0
-
-for (i in 1:1000) {
-  # Generate new data
-  new_data <- oring_df[sample(idx_seq, 24, replace = TRUE), ]
-
-  # Run glm on this new data
-  model_i <- glm(formula = failure ~ Kelvin, family = binomial(), data = new_data)
-
-  # If model converged, add coefficients to the vectors
-  if (model_i$deviance > 0.1) {
-    counter <- counter + 1
-    intercepts[counter] <- model_i$coefficients[1]
-    slopes[counter] <- model_i$coefficients[2]
-    products[counter] <- model_i$coefficients[1] * model_i$coefficients[2]
-  }
-}
-
-intercept_boot <- mean(intercepts) # bootstrap estimate of intercept
-intercept_boot
-
-intercept_boot_var <- var(intercepts) # variance of intercept
-intercept_boot_var
-
-slope_boot <- mean(slopes) # bootstrap estimate of slope
-slope_boot
-
-slope_boot_var <- var(slopes) # variance of slope
-slope_boot_var
-
-covar_boot <- mean(products) - slope_boot * intercept_boot # bootstrap estimate of covariance
-covar_boot
-
-bootstrap_df <- cbind.data.frame(intercepts, slopes)
-```
-```{r graph}
-library(ggpubr)
-
-inter_polt <- ggplot(data = bootstrap_df) +
-  aes(x = intercepts) +
-  geom_histogram()
-
-slope_plot <- ggplot(data = bootstrap_df) +
-  aes(x = slopes) +
-  geom_histogram()
-
-ggarrange(inter_polt, slope_plot,
-  labels = c("Intercepts", "Slopes"),
-  ncol = 2, nrow = 1
-)
-```
-
-```{r Inference Bootstrap non-param}
-temps <- seq(270, 320)
-temps_f <- seq(270, 320) * 1.8 - 459
-
-logit <- intercept_boot + temps * slope_boot
-odds <- exp(logit)
-boot_pi <- odds / (1 + odds)
-
-logit_lower <- logit - 1.96 * sqrt(intercept_boot_var + 2 * covar_boot * temps + slope_boot_var * temps^2)
-odds_lower <- exp(logit_lower)
-boot_pi_lower <- odds_lower / (1 + odds_lower)
-
-logit_upper <- logit + 1.96 * sqrt(intercept_boot_var + 2 * covar_boot * temps + slope_boot_var * temps^2)
-odds_upper <- exp(logit_upper)
-boot_pi_upper <- odds_upper / (1 + odds_upper)
-
-infer_df <- cbind.data.frame(temps_f, boot_pi, boot_pi_lower, boot_pi_upper)
-
-ggplot(data = infer_df) +
-  aes(x = temps_f, y = boot_pi) +
-  geom_line()
-```
-
-
-
-``` {r Parametric bootstrap}
-## Parametric bootstrap
-intercepts_param <- vector()
-slopes_param <- vector()
-products_param <- vector()
-for (i in 1:1000) {
-  intercepts_param[i] <- rnorm(1, mean = intercept_boot, sd = sd(intercepts))
-  slopes_param[i] <- rnorm(1, mean = slope_boot, sd = sd(slopes))
-  products_param[i] <- slopes_param[i] * intercepts_param[i]
-}
-
-intercept_param <- mean(intercepts_param) # bootstrap estimate of intercept
-intercept_param
-
-intercept_param_var <- var(intercepts_param) # standard errors of intercept
-intercept_param_var
-
-slope_param <- mean(slopes_param) # bootstrap estimate of slope
-slope_param
-
-slope_param_var <- var(slopes_param) # standard errors of slope
-slope_param_var
-
-covar_param <- mean(products_param) - slope_param * intercept_param # bootstrap estimate of covariance
-covar_param
-
-bootstrap_param_df <- cbind.data.frame(intercept_param, slope_param)
-```
-
-```{r Inference Bootstrap param}
-temps <- seq(270, 320)
-temps_f <- seq(270, 320) * 1.8 - 459
-
-logit <- intercept_param + temps * slope_param
-odds <- exp(logit)
-boot_pi <- odds / (1 + odds)
-
-logit_lower <- logit - 1.96 * sqrt(intercept_param_var + 2 * covar_param * temps + slope_param_var * temps^2)
-odds_lower <- exp(logit_lower)
-boot_pi_lower <- odds_lower / (1 + odds_lower)
-
-logit_upper <- logit + 1.96 * sqrt(intercept_boot_var + 2 * covar_param * temps + slope_param_var * temps^2)
-odds_upper <- exp(logit_upper)
-boot_pi_upper <- odds_upper / (1 + odds_upper)
-
-infer_df_param <- cbind.data.frame(temps_f, boot_pi, boot_pi_lower, boot_pi_upper)
-
-ggplot(data = infer_df_param) +
-  aes(x = temps_f, y = boot_pi) +
-  geom_line()
-```
-
-```{r Inference Modeled}
-temps <- seq(270, 320)
-modeled_pi <- vector()
-counter <- 0
-
-for (temp in 270:320) {
-  counter <- counter + 1
-  Kelvin <- temp
-  print(Kelvin)
-  modeled_pi[counter] <- predict(model_zero, newdata = data.frame(Kelvin), type = "response")
-  print(modeled_pi[counter])
-}
-
-infer_df_model <- cbind.data.frame(temps, modeled_pi)
-
-ggplot(data = infer_df_model) +
-  aes(x = temps, y = modeled_pi) +
-  geom_line()
 ```
 
 
@@ -512,6 +364,20 @@ ggplot(data = infer_df_model) +
 ## Alternative Specification (10 points)
 
 With the same set of explanatory variables in your final model, estimate a linear regression model. Explain the model results; conduct model diagnostic; and assess the validity of the model assumptions. Would you use the linear regression model or binary logistic regression in this case? Explain why.
+
+```{r}
+linear_model <- lm(O.ring ~ Temp + Pressure, data = data)
+summary(linear_model)
+```
+
+```{r}
+plot(linear_model$fitted.values, linear_model$residuals)
+```
+```{r}
+qqnorm(linear_model$residuals)
+qqline(linear_model$residuals)
+```
+In this case, since the dependent variable is binary (0 or 1), it might not be appropriate to use a linear regression model. Linear regression may predict values outside the range [0,1] which doesn't make sense for a binary outcome. Instead, logistic regression, which predicts the log-odds of the outcome, might be more suitable.
 
 # Conclusions (10 points)
 
