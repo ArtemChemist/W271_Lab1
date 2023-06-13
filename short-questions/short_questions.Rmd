@@ -207,7 +207,7 @@ drinks_scaled %>%
   pivot_longer(cols = 3:13, names_to = "indicators", values_to = "values") %>%
   ggplot(data = ., aes(x = indicators, y = values)) +
   geom_boxplot() +
-  theme_minimal()
+  theme_minimal() + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
 ```
 
 ```{r Drinking EDA 2}
@@ -221,63 +221,45 @@ neg_plot <- ggplot(
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = c(0.15, 0.8)) +
+  theme(legend.position = c(0.4, 0.6)) +
   guides(
-    fill = guide_legend(title = "Neg romantic event"),
-    colour = guide_legend(title = "Neg romantic event")
-  ) +
+    fill = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5, direction = "horizontal"),
+    colour = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5, direction = "horizontal"),
+  ) + theme(axis.title.y = element_blank(), axis.title.x = element_blank()) + 
   xlim(0, 2)
 
 pos_plot <- ggplot(
   data = drinks,
-  aes(
-    x = prel,
+  aes(x = prel,
     fill = as.factor(dayweek),
-    colour = as.factor(dayweek)
-  )
+    colour = as.factor(dayweek))
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = c(0.15, 0.8)) +
-  guides(
-    fill = guide_legend(title = "Pos romantic event"),
-    colour = guide_legend(title = "Pos romantic event")
-  )
+  theme(legend.position = "none") + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
 
 tot_plot <- ggplot(
   data = drinks,
-  aes(
-    x = numall,
+  aes( x = numall,
     fill = as.factor(dayweek),
-    colour = as.factor(dayweek)
-  )
+    colour = as.factor(dayweek))
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = c(0.15, 0.8)) +
-  guides(
-    fill = guide_legend(title = "Total drinks"),
-    colour = guide_legend(title = "Total drinks")
-  )
+  theme(legend.position = "none") + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
 
 sest_plot <- ggplot(
   data = drinks,
-  aes(
-    x = desired,
+  aes(x = desired,
     fill = as.factor(dayweek),
-    colour = as.factor(dayweek)
-  )
+    colour = as.factor(dayweek))
 ) +
   geom_density(alpha = 0.2) +
   theme_minimal() +
-  theme(legend.position = c(0.15, 0.8)) +
-  guides(
-    fill = guide_legend(title = "Desire"),
-    colour = guide_legend(title = "Desire")
-  )
+  theme(legend.position = "none") + theme(axis.title.y = element_blank(), axis.title.x = element_blank())
 
 ggarrange(NULL, NULL, neg_plot, pos_plot, NULL, NULL, tot_plot, sest_plot,
-  labels = c("Neg", "Pos", "", "", "Tot", "Desire", "", ""),
+  labels = c("", "", "Negative romance", "Positive romance", "", "", "Total drinks", "Self-esteem"),
   ncol = 2, nrow = 4, heights = c(0.1, 1, 0.1, 1)
 )
 ```
