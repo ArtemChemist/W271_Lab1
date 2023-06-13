@@ -103,6 +103,10 @@ grid.arrange(p3, p4, nrow = 2, ncol = 1)
 
 
 ```
+```{r}
+data
+```
+
 
 ## Description
 
@@ -316,38 +320,66 @@ Using the parametric bootstrap, compute 90% confidence intervals separately at e
 In this section, you should describe your process, justify such a process, and present your results in a way that is compelling for your reader.
 
 ```{r}
-# Set the number of bootstrap samples
-B <- 1000
+# Load necessary library
+library(MASS)
 
-# Initialize a matrix to store the predicted probabilities
-probs <- matrix(NA, nrow = B, ncol = 91)
+# Set seed for reproducibility
+set.seed(123)
 
-# Loop over bootstrap samples
-for(b in 1:B){
-  
-  # Resample the data
-  data_resampled <- data[sample(nrow(data), replace = TRUE), ]
-  
-  # Fit the logistic regression model
-  fit <- glm(O.ring ~ Temp, data = data_resampled, family = binomial)
-  
-  # Compute the predicted probabilities for temperatures from 10 to 100
-  for(temp in 10:100){
-    probs[b, temp - 9] <- predict(fit, newdata = data.frame(Temp = temp), type = "response")
-  }
+# Fit the initial model to the data
+fit <- glm(O.ring ~ Temp, data = data, family = binomial)
+
+# Extract the fitted parameters
+alpha <- coef(fit)[1]
+beta <- coef(fit)[2]
+
+# Number of bootstrap resamples
+R <- 1000
+
+# Preallocate a matrix to store the bootstrap coefficients
+bootstrap_coefs <- matrix(NA, nrow = R, ncol = 2,
+                          dimnames = list(1:R, names(coef(fit))))
+
+# Run the bootstrap
+for (i in 1:R) {
+  # Generate new response values from the fitted model
+  y_star <- rbinom(n = nrow(data), size = 1, prob = plogis(alpha + beta * data$Temp))
+  # Fit the model to the new data
+  fit_star <- glm(y_star ~ data$Temp, family = binomial)
+  # Record the estimated parameters
+  bootstrap_coefs[i,] <- coef(fit_star)
 }
 
-# Compute the 90% bootstrap confidence intervals
-CI_lower <- apply(probs, 2, function(x) quantile(x, probs = 0.05))
-CI_upper <- apply(probs, 2, function(x) quantile(x, probs = 0.95))
+# Compute the 90% confidence interval for alpha
+alpha_CI <- quantile(bootstrap_coefs[, "(Intercept)"], probs = c(0.05, 0.95))
 
-# Print the confidence intervals
-data.frame(Temperature = 10:100, CI_lower, CI_upper)
+# Preallocate a matrix for the beta confidence intervals
+beta_CI <- matrix(NA, nrow = 91, ncol = 2, 
+                  dimnames = list(10:100, c("Lower", "Upper")))
+
+# Compute the 90% confidence interval for beta at each temperature
+for (temp in 10:100) {
+  # Calculate the beta values at this temperature
+  beta_at_temp <- alpha_CI + bootstrap_coefs[, "Temp"] * temp
+  # Compute the confidence interval
+  beta_CI[temp - 9,] <- quantile(beta_at_temp, probs = c(0.05, 0.95))
+}
+
+```
+
+```{r}
+beta_CI
 ```
 
 
+
 ```{r}
-data.frame(Temperature = 10:100, CI_lower, CI_upper)
+# Convert log-odds to probabilities
+beta_CI_prob <- plogis(beta_CI)
+
+# Print the probability confidence intervals
+print(beta_CI_prob)
+
 ```
 
 
