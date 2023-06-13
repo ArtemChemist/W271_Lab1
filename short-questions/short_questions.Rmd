@@ -110,7 +110,7 @@ lrt_cereal_quadratic_effects
 ## Where do you think Apple Jacks will be placed? 
 (1 point) Kellogg’s Apple Jacks (http://www.applejacks.com) is a cereal marketed toward children. For a serving size of $28$ grams, its sugar content is $12$ grams, fat content is $0.5$ grams, and sodium content is $130$ milligrams. Estimate the shelf probabilities for Apple Jacks.
 
-```{r predictions for apple jacks}
+```{r predictions for apple jacks, message=FALSE, results = FALSE}
 # Estimate new model that removes non-significant fat variable
 model_cereal_shelves_trim <- multinom(formula = Shelf ~ sugar + sodium, data = cereal)
 
@@ -124,18 +124,16 @@ for (col in col_trans_list) {
   app_jack[str_sub(col, 1, -5)] <- (col_per - min(ref_col)) / max(ref_col)
 }
 
-# Estimate placement of Apple Jack
+# Estimate placement of Apple Jack with a trimmed model
 aj_shelf_probs_trim <- predict(model_cereal_shelves_trim, newdata = app_jack, type = "probs")
 shelf_trim <- aj_shelf_probs_trim[which.max(aj_shelf_probs_trim)]
-shelf_trim
 
+# Estimate placement of Apple Jack with bloated model
 aj_shelf_probs <- predict(model_cereal_shelves_linear, newdata = app_jack, type = "probs")
 shelf <- aj_shelf_probs[which.max(aj_shelf_probs)]
-shelf
 ```
 
-> 'Fill this in: Where does your model predict apple jacks will be placed?'
-The model shows 0.40, which means that Appl jacks will be placed on shelf 1.
+> Using best practices for variable selection we estimated a new model that only contains statistically significant variables: sugar and sodium. Using this model we estimate probabilities of placing Apple Jack on the shelves 1, 2, 3 and 4 respectievely as `r round(100* aj_shelf_probs_trim, digits = 0)` percentage points. Thus, shelf `r which.max(aj_shelf_probs)` is clearly the most likely place. If we were to use a full model, that includes insignificant variable Fat, the result would stay the same, but the difference between shelves would be smaller at `r round(100* aj_shelf_probs, digits = 0)` percentage points.
 
 ## Figure 3.3 
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
