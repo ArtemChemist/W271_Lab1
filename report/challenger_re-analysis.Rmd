@@ -95,23 +95,30 @@ oring_df$failure <-factor(oring_df$failure, levels = c(0,1))
 
 oring_df$Kelvin <- (459.67+ oring_df$Temp)*5/9
 ```
+```{r Add a row}
+delta <-data.frame(24, 31, 200, 0, 6, 0, 273)
+names(delta) <- names(oring_df)
+oring_df <- rbind(oring_df, delta)
+
+```
 
 ```{r}
 model_zero <- glm(formula=failure~Kelvin, family=binomial(), data=oring_df)
 summary(model_zero)
 ```
+
 ```{r Bootstrap non-parametric, warning=FALSE}
 ## Non-parametric bootstrap
 intercepts <- vector()
 slopes <- vector()
 products <- vector()
-idx_seq <- seq(1,23)
+idx_seq <- seq(1,24)
 counter = 0
 
 for (i in 1:1000){
   
   # Generate new data 
-  new_data = oring_df[sample(idx_seq, 23, replace = TRUE),]
+  new_data = oring_df[sample(idx_seq, 24, replace = TRUE),]
   
   # Run glm on this new data 
   model_i <- glm(formula = failure ~ Kelvin, family = binomial(), data = new_data)
@@ -166,7 +173,7 @@ logit <- intercept_boot + temps*slope_boot
 odds <- exp(logit)
 boot_pi <- odds/(1+odds)
 
-logit_lower <- logit - 1.96*sqrt(intercept_boot_var + slope_boot_var*temps^2  )
+logit_lower <- logit - 1.96*sqrt(intercept_boot_var + 2* covar_boot * temps + slope_boot_var*temps^2  )
 odds_lower <- exp(logit_lower)
 boot_pi_lower <- odds_lower/(1+odds_lower)
 
@@ -246,13 +253,15 @@ counter = 0
 for (temp in 270: 320){
   counter = counter+1
   Kelvin <- temp
+  print(Kelvin)
   modeled_pi[counter] <- predict(model_zero, newdata = data.frame(Kelvin), type = "response")
+  print(modeled_pi[counter])
 }
 
-infer_df_model = cbind(infer_df, modeled_pi)
+infer_df_model = cbind.data.frame(temps, modeled_pi)
 
-ggplot(data = infer_df) +
-  aes(x = temps_f, y = modeled_pi) +
+ggplot(data = infer_df_model) +
+  aes(x = temps, y = modeled_pi) +
   geom_line()
 ```
 
