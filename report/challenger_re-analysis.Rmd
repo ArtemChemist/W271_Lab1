@@ -407,7 +407,7 @@ print(beta_CI_prob)
 With the same set of explanatory variables in your final model, estimate a linear regression model. Explain the model results; conduct model diagnostic; and assess the validity of the model assumptions. Would you use the linear regression model or binary logistic regression in this case? Explain why.
 
 ```{r}
-linear_model <- lm(as.numeric(O.ring) ~ Temp + Pressure, data = data)
+linear_model <- lm(as.numeric(O.ring) ~ Temp, data = data)
 summary(linear_model)
 ```
 
@@ -418,8 +418,20 @@ plot(linear_model$fitted.values, linear_model$residuals)
 qqnorm(linear_model$residuals)
 qqline(linear_model$residuals)
 ```
-In this case, since the dependent variable is binary (0 or 1), it might not be appropriate to use a linear regression model. Linear regression may predict values outside the range [0,1] which doesn't make sense for a binary outcome. Instead, logistic regression, which predicts the log-odds of the outcome, might be more suitable.
+
+Using a linear model with solely the Temperature variable, we observe that the temperature coefficient is -0.04754, indicating that for every increase of 1 unit in temperature the expected number of O-ring failures decreases by approximately 0.04754, if all other variables are held constant. This effect is statistically significant (p = 0.01268). 
+
+When plotting the residuals vs the fitted values we noticed a linear nature however a deviation from the norm existed at the tail. The Q-Q similarly shows a linear pattern that deviates at the tail of the distribution. Due to this deviance from the mean at the tails we believe that the linear model assumptions are not confidently met. 
+
+In this case, since the dependent variable is binary (0 or 1), it might not be appropriate to use a linear regression model. Linear regression may predict values outside the range [0,1] which doesn't make sense for a binary outcome. Instead, logistic regression, which predicts the log-odds of the outcome, might be more suitable. 
+
+Due to the inability of confidently meeting the assumptions for a linear regression model as well as the nature of the target variable (success or failure) we believe that the binary logistic regression model is a better fit.
+
 
 # Conclusions (10 points)
 
 Interpret the main result of your preferred model in terms of both odds and probability of failure. Summarize this result with respect to the question(s) being asked and key takeaways from the analysis.
+
+Our preferred model to understand O-ring failure in the Challenger disaster was to use temperature. The coefficient of temperature is -0.2321627. This value represents the expected change in log-odds of the event (O-ring failure) for a one unit increase in temperature. In this case, a one degree Fahrenheit increase in temperature is associated with a decrease in the log-odds of the event (O-ring failure) by about 0.2321627. To interpret this in terms of odds, we take the exponential of the coefficient. So the odds multiplier per degree increase in temperature is exp(-0.2321627) = 0.7930665. This means that for each additional degree Fahrenheit, we expect the odds of an O-ring failure to be about 79.31% of the odds at the previous degree. In other words, the odds of failure decrease by about 20.69% for each degree increase in temperature.
+
+In conclusion, based on this model, temperature is a significant predictor of O-ring failure, with the risk of failure decreasing as temperature increases. This result quantifies the qualitative understanding that colder temperatures pose a higher risk of O-ring failure. 
