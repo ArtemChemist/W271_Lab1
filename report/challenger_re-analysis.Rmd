@@ -10,7 +10,7 @@ geometry: margin=1in
 
 ```{=tex}
 \begin{abstract} 
-This report will, indeed, be abstract. No, instead, describe your goals your approach, and what you learn.
+The goal of this report is to estimate the probability of an O-ring failure in one of the booster rockets of a space shuttle. This report builds upon the data and the approach presented by Dalal et al. (JASA 1989, 84(408), 945). Using historic data on the O-ring falures, joint temperature and leak-check-pressure we estimate logistoc regression for probability of failure. We then use this model for parametric bootstrap estimation of failure probability and confidence interval. Our findings are very close to the conclusion of the original paper.
 \end{abstract}
 
 ```
