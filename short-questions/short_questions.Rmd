@@ -19,6 +19,8 @@ library(stargazer)
 library(GGally)
 library(nnet)
 library(car)
+library(corrplot)
+library(gridExtra)
 ```
 
 # Strategic Placement of Products in Grocery Stores (5 points)
@@ -48,33 +50,48 @@ for (col in col_trans_list) {
   col_per <- cereal[col] / cereal["size_g"]
   cereal[str_sub(col, 1, -5)] <- (col_per - min(col_per)) / max(col_per)
 }
+
+cereal
 ```
 
 ```{r boxplots}
-cereal %>%
-  pivot_longer(cols = 8:10, names_to = "indicators", values_to = "values") %>%
-  ggplot(data = ., aes(x = indicators, y = values)) +
-  geom_boxplot() +
-  geom_jitter(width = 0.125) +
-  theme_minimal() + 
-  theme(axis.title.x = element_blank(), axis.title.y = element_blank())
+par(mfrow = c(1, 3))
+
+# Sugar
+boxplot(formula = sugar ~ Shelf, data = cereal, ylab = "Sugar",
+        xlab = "Shelf", pars = list(outpch = NA))
+stripchart(x = cereal$sugar ~ cereal$Shelf, lwd = 2,
+           col = "red", method = "jitter", vertical = TRUE, pch = 1, add = TRUE)
+
+# Fat
+boxplot(formula = fat ~ Shelf, data = cereal, ylab = "Fat",
+        xlab = "Shelf", pars = list(outpch = NA))
+stripchart(x = cereal$fat ~ cereal$Shelf, lwd = 2,
+           col = "red", method = "jitter", vertical = TRUE, pch = 1, add = TRUE)
+
+# Sodium
+boxplot(formula = sodium ~ Shelf, data = cereal, ylab = "Sodium",
+        xlab = "Shelf", pars = list(outpch = NA))
+stripchart(x = cereal$sodium ~ cereal$Shelf, lwd = 2,
+           col = "red", method = "jitter", vertical = TRUE, pch = 1, add = TRUE)
 ```
 
 > It appears that the items that are higher in sodium tend to be on shelf #1. Items that are high in sugar tend to go on shelf #2. For fat, there does not appear to be any obvious trends of which shelf items that are high or low in fat go to.
 
 ```{r parallel coordiantes plot}
-MASS::parcoord(cereal[c("Shelf", "fat", "sodium", "sugar")], 
-         col = colors()[12 * cereal$Shelf])
+cereal$ShelfNumber <- as.character(cereal$Shelf)
+ggparcoord(data = cereal, columns = 8:10,groupColumn = "ShelfNumber",
+           showPoints = TRUE, scale = "uniminmax")
 ```
 
 > The parallel coordinates plot is harder to glean information from than the box plots. When looking closely one can find much of the same information that was found in the box plots. Namely, the highest sugar items belonging to shelf #2 and the high sodium items being found in shelf #1.
 
-> Without running an regression it is not responsible to say definitively whether or not a content different exists between the shelves. Based on these graphs there doesn't seem to be too big of a relationship between sugar, fat, and sodium and the shelf a cereal belongs to.
+> Without running a regression analysis it is not responsible to say definitively whether or not a content different exists between the shelves. Based on these graphs there doesn't seem to be too big of a relationship between sugar, fat, and sodium and the shelf a cereal belongs to.
 
 ## Evaluate Ordinal vs. Categorical 
 (1 point) The response has values of $1, 2, 3,$ and $4$. Explain under what setting would it be desirable to take into account ordinality, and whether you think that this setting occurs here. Then estimate a suitable multinomial regression model with linear forms of the sugar, fat, and sodium variables. Perform LRTs to examine the importance of each explanatory variable. Show that there are no significant interactions among the explanatory variables (including an interaction among all three variables).
 
-> Ordinal data would make sense in the case where there's a natural ordering to the shelves. Such as if higher shelves were inherently more desirable than lower shelves. Then it would be expected that better selling products be placed on higher shelves. It doesn't appear as if this is the case here as the most desirable shelves would likely be at eye level (towards the middle) and there doesn't appear to be any other sort of ordering at play.
+> Ordinal data would make sense in the case where there is a natural ordering to the shelves. Such as if higher shelves were inherently more desirable than lower shelves. Then it would be expected that better selling products be placed on higher shelves. It does not appear as if this is the case here as the most desirable shelves would likely be at eye-level (towards the middle) and there doesn't appear to be any other sort of ordering at play.
 
 ```{r multinomial logit regressions, message=FALSE, results = FALSE}
 # Set Shelf as a categorical value
@@ -97,13 +114,13 @@ model_cereal_shelves_quadratic <- multinom(
 
 ```{r likelihood ratio tests: main effects}
 # Conduct Anova test on linear model
-lrt_cereal_main_effects <- car::Anova(model_cereal_shelves_linear)
+lrt_cereal_main_effects <- car::Anova(model_cereal_shelves_linear, test = "LR")
 lrt_cereal_main_effects
 ```
 
 ```{r likelihood ratio tests: interaction effects} 
 # Conduct Anova test on the interactions
-lrt_cereal_quadratic_effects <- car::Anova(model_cereal_shelves_quadratic)
+lrt_cereal_quadratic_effects <- car::Anova(model_cereal_shelves_quadratic, test = "LR")
 lrt_cereal_quadratic_effects
 ```
 > The LRT test for linear response variables shows strong statistical significance for sugar and sodium content (p-values of `r lrt_cereal_main_effects$"Pr(>Chisq)"[2]` and `r lrt_cereal_main_effects$"Pr(>Chisq)"[3]` respectievely) but fails to show even weak significance of fat content (p-value of `r round(lrt_cereal_main_effects$"Pr(>Chisq)"[1], digits = 4)`)
@@ -144,14 +161,16 @@ shelf_trim <- aj_shelf_probs_trim[which.max(aj_shelf_probs_trim)]
 aj_shelf_probs <- predict(model_cereal_shelves_linear, 
                           newdata = app_jack, type = "probs")
 shelf <- aj_shelf_probs[which.max(aj_shelf_probs)]
+
+aj_shelf_probs
 ```
 
-> Using best practices for variable selection we estimated a new model that only contains statistically significant variables: sugar and sodium. Using this model we estimate probabilities of placing Apple Jack on the shelves 1, 2, 3 and 4 respectievely as `r round(100* aj_shelf_probs_trim, digits = 0)` percentage points. Thus, shelf `r which.max(aj_shelf_probs)` is clearly the most likely place. If we were to use a full model, that includes insignificant variable Fat, the result would stay the same, but the difference between shelves would be smaller at `r round(100* aj_shelf_probs, digits = 0)` percentage points.
+> Using best practices for variable selection we estimated a new model that only contains statistically significant variables: sugar and sodium. Using this model we estimate probabilities of placing Apple Jack on the shelves 1, 2, 3 and 4 respectively as `r round(100* aj_shelf_probs_trim, digits = 0)` percentage points. Thus, shelf `r which.max(aj_shelf_probs)` is clearly the most likely place. If we were to use a full model, that includes insignificant variable Fat, the result would stay the same, but the difference between shelves would be smaller at `r round(100* aj_shelf_probs, digits = 0)` percentage points.
 
 ## Figure 3.3 
 (1 point) Construct a plot similar to Figure 3.3 where the estimated probability for a shelf is on the *y-axis* and the sugar content is on the *x-axis*. Use the mean overall fat and sodium content as the corresponding variable values in the model. Interpret the plot with respect to sugar content.
 
-```{r create figure 3.3}
+```{r create figure 3.3, fig.width=6, fig.height=3}
 # Get mean values for static values
 fat_mean <- mean(cereal$fat)
 na_mean <- mean(cereal$sodium)
@@ -177,8 +196,7 @@ shelf_vs_sugar_plot <- df_to_plot %>%
 shelf_vs_sugar_plot
 ```
 
-> For cereals with normalized sugar content up to approximately average, there is roughly eqaul chance of finding them on 4'th and 3'd shelfs. Assuming the first shelf is at teh bottom and the 4'th is at the top,  an average health-concious adult might see them there. As the normalized sugar content approaches the higher end of the spectrum, the chances of finding this cereal on the second shelf, where a kid might see it, is growing dramatically.
-
+> For cereals with normalized sugar content up to approximately average, there is roughly eqaul chance of finding them on 4'th and 3'd shelfs. Assuming the first shelf is at teh bottom and the 4th is at the top,  an average health-concious adult might see them there. As the normalized sugar content approaches the higher end of the spectrum, the chances of finding this cereal on the second shelf, where a kid might see it, is growing dramatically.
 
 ## Odds ratios 
 (1 point) Estimate odds ratios and calculate corresponding confidence intervals for each explanatory variable. Relate your interpretations back to the plots constructed for this exercise. 
@@ -221,12 +239,15 @@ The researchers stated the following hypothesis:
 
 ```{r read drinking data, message=FALSE}
 drinks <- read_csv('../data/short-questions/DeHartSimplified.csv')
+drinks.selected <- select(drinks, "numall", "prel", "nrel",
+                          "age", "rosn", "posevent", "negevent", "desired")
+saturday <- filter(drinks, dayweek == "6")
 ```
 
 ## EDA 
 (2 points) Conduct a thorough EDA of the data set, giving special attention to the relationships relevant to the researchers' hypotheses. Address the reasons for limiting the study to observations from only one day.
 
-```{r drinking EDA 1}
+```{r drinking EDA 1, warning=FALSE, fig.width=10, fig.height=4}
 drinks_scaled <- as.data.frame(scale(drinks))
 drinks_scaled %>%
   pivot_longer(cols = 3:13, names_to = "indicators", values_to = "values") %>%
@@ -236,113 +257,87 @@ drinks_scaled %>%
   theme(axis.title.y = element_blank(), axis.title.x = element_blank())
 ```
 
-```{r Drinking EDA 2}
-neg_plot <- ggplot(
-  data = drinks,
-  aes(
-    x = nrel,
-    fill = as.factor(dayweek),
-    colour = as.factor(dayweek)
-  )
-) +
-  geom_density(alpha = 0.2) +
-  theme_minimal() +
-  theme(legend.position = c(0.4, 0.6)) +
-  guides(
-    fill = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5,
-                        direction = "horizontal"),
-    colour = guide_legend(title = "Day", keywidth = 0.5, keyheight = 0.5,
-                          direction = "horizontal"),
-  ) + theme(axis.title.y = element_blank(), axis.title.x = element_blank()) + 
-  xlim(0, 2)
-
-pos_plot <- ggplot(
-  data = drinks,
-  aes(x = prel,
-    fill = as.factor(dayweek),
-    colour = as.factor(dayweek))
-) +
-  geom_density(alpha = 0.2) +
-  theme_minimal() +
-  theme(legend.position = "none") + theme(axis.title.y = element_blank(),
-                                          axis.title.x = element_blank())
-
-tot_plot <- ggplot(
-  data = drinks,
-  aes( x = numall,
-    fill = as.factor(dayweek),
-    colour = as.factor(dayweek))
-) +
-  geom_density(alpha = 0.2) +
-  theme_minimal() +
-  theme(legend.position = "none") + theme(axis.title.y = element_blank(),
-                                          axis.title.x = element_blank())
-
-sest_plot <- ggplot(
-  data = drinks,
-  aes(x = desired,
-    fill = as.factor(dayweek),
-    colour = as.factor(dayweek))
-) +
-  geom_density(alpha = 0.2) +
-  theme_minimal() +
-  theme(legend.position = "none") + theme(axis.title.y = element_blank(),
-                                          axis.title.x = element_blank())
-
-ggarrange(NULL, NULL, neg_plot, pos_plot, NULL, NULL, tot_plot, sest_plot,
-  labels = c("", "", 
-             "Negative romance", "Positive romance",
-             "", "", "Total drinks", "Self-esteem"),
-  ncol = 2, nrow = 4, heights = c(0.1, 1, 0.1, 1)
-)
+```{r Drinking EDA 2, warning=FALSE}
+M = cor(drinks.selected,  use = "pairwise.complete.obs")
+corrplot(M, method = 'number')
 ```
 
-```{r Drinking EDA 3, results='asis'}
-stargazer(as.data.frame(drinks), header = FALSE, type = "latex")
+```{r Drinking EDA 3}
+summary(drinks)
 ```
-> 'Fill this in: What do you learn?' 
+```{r Drinking EDA 4, warning=FALSE}
+output_variable <- "numall"
+input_variables <- setdiff(names(drinks.selected), output_variable)
+
+plots <- lapply(input_variables, function(variable) {
+  ggplot(drinks.selected, aes_string(x = variable, y = output_variable)) +
+    geom_point() +
+    labs(x = variable, y = output_variable) +
+    ggtitle(paste(variable, "vs", output_variable))
+})
+
+gridExtra::grid.arrange(grobs = plots, ncol = 4)
+```
+
+> When visually inspecting each of the covariances and scatterplots it appears that there may be a relationship between some of the variables and the number of drinks but it appears as most of them will not be strong indicators of the final number of drinks consumed. `desired` has the strongest relationship with `numall` with a covariance of `0.40`. For some of the variables the pattern seems to defy expectation such as with `rosn` where those with the strongest sense of self-confidence appeared to drink more.
 
 ## Hypothesis One 
-(2 points) The researchers hypothesize that negative interactions with romantic partners would be associated with alcohol consumption and an increased desire to drink. Using appropriate models, evaluate the evidence that negative relationship interactions are associated with higher alcohol consumption and an increased desire to drink. 
+(2 points) The researchers hypothesize that negative interactions with romantic partners would be associated with alcohol consumption and an increased desire to drink. Using appropriate models, evaluate the evidence that negative relationship interactions are associated with higher alcohol consumption and an increased desire to drink.
 
-```{r Poisson}
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel,
-                              family = poisson,
-                              data = filter(drinks, dayweek == "6"))
-summary(model_neg_rel_saturday)
+```{r H1, warning=FALSE, fig.width=10, fig.height=4}
+deviance_plot <- function(model) {
+  s.res <- rstandard(model, type = "pearson")
+  lin.pred <- model$linear.predictors
+  df <- data.frame(s.res, lin.pred)
+  df %>%
+    ggplot(aes(x = df$lin.pred , y = df$s.res)) +
+    geom_point() +
+    geom_hline(yintercept=c(3, 2, 0, -2, -3), color = "red", linetype = "dashed") +
+    geom_smooth(se = FALSE) +
+    ggtitle("Standardized residuals") + 
+    xlab("Linear predictor") +
+    ylab("Standardized Pearson residuals")
+}
 
-model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel,
-                             family = poisson,
-                             data = filter(drinks, dayweek == "2"))
-summary(model_neg_rel_tuesday)
+# Poisson
+model_nrel_saturday <- glm(formula = numall ~ nrel,
+  family = poisson,
+  data = saturday
+)
 
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel,
-                              family = poisson,
-                              data = filter(drinks, dayweek == "6"))
-summary(model_neg_rel_saturday)
+summary(model_nrel_saturday)
 
-model_des_tuesday <- lm(formula = as.numeric(desired) ~ nrel,
-                        data = filter(drinks, dayweek == "2"))
-summary(model_des_tuesday)
+# Quasi-Poisson
+model_quasi_nrel_saturday <- glm(formula = numall ~ nrel,
+  family = quasipoisson(link = "log"),
+  data = saturday
+)
 
-model_des_saturday <- lm(formula = as.numeric(desired) ~ nrel,
-                         data = filter(drinks, dayweek == "6"))
+summary(model_quasi_nrel_saturday)
+
+# Desired
+model_des_saturday <- glm(formula = desired ~ nrel,
+  data = saturday
+)
+
 summary(model_des_saturday)
+deviance_plot(model_nrel_saturday) +
+  deviance_plot(model_quasi_nrel_saturday) +
+  deviance_plot(model_des_saturday)
 ```
-> 'Fill this in: What do you learn?' 
+> By itself, it does `nrel` does not have a significant effect on the number of drinks one has. There does appear to be some possible issues with overdispersion according to the residual plot and the high deviance, so a second model was fitted using a quasi-poisson model. This one did not appear to have issues with overdispersion but also did not indicate a significant relationship between `nrel` and `numall`. A model for `desired` also did not indicate any significant relationship between `nrel` and the desire one has for a drink. Altogether, it does not appear as though one can confirm the hypothesis that `nrel` has an effect on `desired` or `numall`.
 
 ## Hypothesis Two
 (1 point) The researchers hypothesize that the relation between drinking and negative relationship interactions should not be evident for individuals with high trait self-esteem. Conduct an analysis to address this hypothesis.
 
-```{r Self-Esteem}
-model_neg_rel_saturday <- glm(formula = as.integer(numall) ~ nrel + rosn
-                              + rosn:nrel, family = poisson,
-                              data = filter(drinks, dayweek == "6"))
+```{r H2, warning=FALSE, fig.width=6, fig.height=3}
+model_nrel_rosn_saturday <- glm(formula = numall ~ nrel*rosn,
+  family = poisson,
+  data = saturday
+)
 
-summary(model_neg_rel_saturday)
-
-model_neg_rel_tuesday <- glm(formula = as.integer(numall) ~ nrel + rosn
-                             + rosn:nrel, family = poisson,
-                             data = filter(drinks, dayweek == "2"))
-summary(model_neg_rel_tuesday)
+summary(model_nrel_rosn_saturday)
+deviance_plot(model_nrel_rosn_saturday)
 ```
+
+> As the researchers predicted it appears that both `nrel` and `nrel:rosn` have a significant effect on `numall`. While the expected number of drinks increases with `nrel`, as `rosn` increases, the effect of `nrel` is dampened. Although, what is considered "high self-esteem" is never specified, it is possible under this model to have a high enough self-esteem that negative relationship interactions no longer have an evident effect on the number of drinks consumed. This confirms the hypothesis the researchers were trying to prove. Additionally, it appears as though adding `rosn` to the variables explains the data well enough that the model does not seem at risk of overdispersion as the previous one was.
